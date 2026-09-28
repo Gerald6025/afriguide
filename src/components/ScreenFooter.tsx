@@ -42,14 +42,14 @@ export function ScreenFooter({
               type="button"
               onClick={onBack}
               aria-label="Previous screen"
-              className="w-16 h-16 rounded-[20px] bg-[#F7F8F9] hover:bg-[#EFF0F2] active:scale-95 transition-all flex items-center justify-center border border-stone-200/50 shadow-2xs text-stone-900 shrink-0 cursor-pointer"
+              className="w-14 h-14 rounded-[20px] bg-[#F7F8F9] hover:bg-[#EFF0F2] active:scale-95 transition-all flex items-center justify-center border border-stone-200/50 shadow-2xs text-stone-900 shrink-0 cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
             </button>
             <button
               type="button"
               onClick={onNext}
-              className="flex-1 h-16 rounded-[20px] bg-[#1E3F32] hover:bg-[#163327] active:scale-[0.98] text-white font-bold text-[17px] flex items-center justify-center shadow-xs transition-all focus:outline-none cursor-pointer"
+              className="w-[148px] h-14 rounded-[20px] bg-[#1E3F32] hover:bg-[#163327] active:scale-[0.98] text-white font-bold text-[17px] flex items-center justify-center shadow-xs transition-all focus:outline-none cursor-pointer"
             >
               {nextText}
             </button>

@@ -11,7 +11,7 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col justify-between overflow-hidden px-5 pt-3 pb-2 select-none">
+    <div className="relative w-full h-full min-h-[780px] bg-white flex flex-col justify-between overflow-hidden px-5 pt-3 pb-2 select-none">
       {/* Centered Logo at Top */}
       <div className="flex justify-center pt-1 pb-2">
         <div className="relative w-[52px] h-[52px] flex items-center justify-center">

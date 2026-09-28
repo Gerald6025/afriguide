@@ -8,6 +8,7 @@ import { AfriGuideLogoBadge } from "../AfriGuideLogo";
 interface OtpVerificationScreenProps {
   email?: string;
   phoneNumber?: string;
+  codeLength?: number;
   onBack?: () => void;
   onVerified?: (code: string) => void;
   onResend?: () => void;
@@ -15,13 +16,15 @@ interface OtpVerificationScreenProps {
 }
 
 export function OtpVerificationScreen({
+  email,
   phoneNumber = "+263 78 413 8081",
+  codeLength = 4,
   onBack,
   onVerified,
   onResend,
   isLoading = false,
 }: OtpVerificationScreenProps) {
-  const [code, setCode] = useState<string[]>(["", "", "", ""]);
+  const [code, setCode] = useState<string[]>(() => Array(codeLength).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Focus first input on mount
@@ -44,7 +47,7 @@ export function OtpVerificationScreen({
     setCode(nextCode);
 
     // Auto advance to next input
-    if (index < 3 && cleanVal) {
+    if (index < codeLength - 1 && cleanVal) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -57,14 +60,14 @@ export function OtpVerificationScreen({
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, codeLength);
     if (pasted) {
       const nextCode = [...code];
       for (let i = 0; i < pasted.length; i++) {
         nextCode[i] = pasted[i];
       }
       setCode(nextCode);
-      const targetFocus = Math.min(pasted.length, 3);
+      const targetFocus = Math.min(pasted.length, codeLength - 1);
       inputRefs.current[targetFocus]?.focus();
     }
   };
@@ -105,10 +108,10 @@ export function OtpVerificationScreen({
             Verify Code
           </h1>
           <p className="text-stone-700 text-[14.5px] font-normal leading-snug">
-            Please enter the code sent to
+            Please enter the 4-digit code sent to
           </p>
-          <p className="text-[#E8622A] font-bold text-[15.5px] leading-snug mt-0.5 tracking-wide">
-            {phoneNumber}
+          <p className="text-[#E8622A] font-bold text-[15.5px] leading-snug mt-0.5 tracking-wide break-all">
+            {email || phoneNumber}
           </p>
         </div>
 
@@ -116,7 +119,10 @@ export function OtpVerificationScreen({
         <form onSubmit={handleVerify} className="w-full flex flex-col items-center">
           <div className="flex justify-center gap-3.5 sm:gap-4 mb-8 w-full">
             {code.map((digit, index) => (
-              <div key={index} className="relative w-[58px] h-[64px]">
+              <div
+                key={index}
+                className="relative w-[58px] h-[64px]"
+              >
                 <input
                   ref={(el) => {
                     inputRefs.current[index] = el;
@@ -128,7 +134,7 @@ export function OtpVerificationScreen({
                   onChange={(e) => handleChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
-                  className="w-full h-full text-center text-[24px] font-bold rounded-[16px] border-2 border-black bg-white text-black outline-none focus:ring-2 focus:ring-black/15 transition-all shadow-2xs select-none"
+                  className="w-full h-full text-center text-[24px] font-bold rounded-[16px] border-2 border-black bg-white text-black outline-none focus:ring-2 focus:ring-black/15 transition-all shadow-2xs select-none font-mono"
                 />
                 {!digit && (
                   <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none">
@@ -142,7 +148,7 @@ export function OtpVerificationScreen({
           {/* Resend Section */}
           <div className="text-center mb-8">
             <p className="text-[13.5px] text-stone-800 font-normal">
-              Didn&apos;t recieve OTP?
+              Didn&apos;t receive OTP?
             </p>
             <button
               type="button"
@@ -176,3 +182,4 @@ export function OtpVerificationScreen({
     </div>
   );
 }
+

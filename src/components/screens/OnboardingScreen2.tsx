@@ -20,9 +20,11 @@ export function OnboardingScreen2({
   onStepChange,
 }: OnboardingScreenProps) {
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col overflow-hidden">
+    <div className="relative w-full h-full min-h-[780px] bg-white flex flex-col justify-between overflow-hidden">
       {/* Top Bar */}
-      <ScreenHeader onSkip={onSkip} />
+      <div>
+        <ScreenHeader onSkip={onSkip} />
+      </div>
 
       {/* Main Content Section */}
       <div className="flex-1 flex flex-col justify-start px-4 pt-1 pb-1">
@@ -81,12 +83,12 @@ export function OnboardingScreen2({
           </div>
         </div>
 
-        {/* Text Section — 85% width */}
-        <div style={{ width: "85%" }} className="mt-4 mb-2">
-          <h1 className="text-[34px] font-black text-black tracking-tight leading-[1.06] mb-2.5">
+        {/* Text Section — matches OnboardingScreen3 spacing and height */}
+        <div style={{ width: "85%", marginTop: 48 }} className="mb-2">
+          <h1 className="text-[34px] font-black text-black tracking-tight leading-[1.06] mb-2">
             Find your<br />perfect guide
           </h1>
-          <p className="text-stone-700 text-[14px] font-normal leading-[1.45]">
+          <p className="text-stone-700 text-[14px] font-normal leading-[1.42]">
             Browse verified local guides with deep knowledge of Zimbabwe&apos;s hidden
             gems, wildlife, culture, and history. Read reviews from fellow travellers and
             find your ideal match.

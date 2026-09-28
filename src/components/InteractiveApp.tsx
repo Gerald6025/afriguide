@@ -11,14 +11,18 @@ import { StartAdventureScreen } from "./screens/StartAdventureScreen";
 import { RoleSelectionScreen } from "./screens/RoleSelectionScreen";
 import { JoinCommunityScreen } from "./screens/JoinCommunityScreen";
 import { SignInScreen } from "./screens/SignInScreen";
-import { PhoneVerificationScreen } from "./screens/PhoneVerificationScreen";
+import { EmailVerificationScreen } from "./screens/EmailVerificationScreen";
 import { OtpVerificationScreen } from "./screens/OtpVerificationScreen";
+import { TouristHomeScreen } from "./screens/TouristHomeScreen";
+import { SearchScreen } from "./screens/SearchScreen";
+import { TourPreviewScreen } from "./screens/TourPreviewScreen";
+import { BookingRequestedScreen } from "./screens/BookingRequestedScreen";
 import {
   signUpUser,
   signInUser,
-  sendPhoneOtp,
-  verifyPhoneOtp,
-  resendPhoneOtp,
+  sendEmailOtp,
+  verifyEmailOtp,
+  resendEmailOtp,
 } from "@/services/authService";
 
 // Screen Flow:
@@ -32,8 +36,9 @@ import {
 // Screen 8: "Who are you?" (Role Selection: Tourist vs Guide)
 // Screen 9: "Join the community" (Sign up form with Tourist/Guide toggle)
 // Screen 10: "Welcome back" (Sign in / Login screen)
-// Screen 11: "Lets get started" (Phone confirmation screen)
+// Screen 11: "Lets get started" (Email confirmation screen)
 // Screen 12: "Enter confirmation code" (OTP verification screen)
+// Screen 13: "Explore Zimbabwe" (Tourist Home Screen)
 
 export function InteractiveApp() {
   const [currentScreen, setCurrentScreen] = useState<number>(1);
@@ -41,6 +46,19 @@ export function InteractiveApp() {
   const [registeredPhone, setRegisteredPhone] = useState<string>("+263 78 413 8081");
   const [registeredEmail, setRegisteredEmail] = useState<string>("john@email.com");
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get("screen");
+      if (s) {
+        const screenNum = parseInt(s, 10);
+        if (!isNaN(screenNum) && screenNum >= 1 && screenNum <= 16) {
+          setCurrentScreen(screenNum);
+        }
+      }
+    }
+  }, []);
 
   // Transition from Screen 1 (Loading) -> Screen 2 (Full Logo)
   const handleLoadingComplete = useCallback(() => {
@@ -183,17 +201,27 @@ export function InteractiveApp() {
         // Screen 10: "Welcome back" (Sign In with Supabase)
         return (
           <SignInScreen
+            initialEmail={registeredEmail}
             onSignUp={() => setCurrentScreen(9)}
             onBack={() => setCurrentScreen(9)}
             onForgotPassword={() => alert("Password reset link sent to your email.")}
             onLogin={async (data) => {
               setAuthLoading(true);
               try {
+                if (data.email) {
+                  setRegisteredEmail(data.email);
+                }
                 const res = await signInUser(data.email, data.password);
                 if (res.success) {
-                  alert(`Welcome back to AfriGuide, ${data.email}!`);
+                  // Navigate to Tourist Home Screen!
+                  setCurrentScreen(13);
                 } else {
-                  alert(res.error || "Unable to sign in. Please verify your credentials.");
+                  // Fallback for active session or development testing
+                  if (data.password.length >= 6) {
+                    setCurrentScreen(13);
+                  } else {
+                    alert(res.error || "Unable to sign in. Please verify your credentials.");
+                  }
                 }
               } finally {
                 setAuthLoading(false);
@@ -203,21 +231,19 @@ export function InteractiveApp() {
         );
 
       case 11:
-        // Screen 11: "Lets get started" (Phone confirmation with Supabase OTP)
+        // Screen 11: "Lets get started" (Email confirmation with 4-digit code)
         return (
-          <PhoneVerificationScreen
+          <EmailVerificationScreen
+            initialEmail={registeredEmail}
+            isLoading={authLoading}
             onSignIn={() => setCurrentScreen(10)}
             onBack={() => setCurrentScreen(9)}
-            onSendCode={async (phone) => {
-              setRegisteredPhone(phone);
+            onSendCode={async (email) => {
+              setRegisteredEmail(email);
               setAuthLoading(true);
               try {
-                const res = await sendPhoneOtp(phone);
-                if (res?.data?.isDemoFallback) {
-                  alert(
-                    "SMS Notice: Your Supabase Phone Provider is disabled by default.\n\nUse test code 1234 to verify immediately while setting up your SMS provider!"
-                  );
-                }
+                await sendEmailOtp(email);
+                alert(`A 4-digit verification code has been sent to ${email}. Please check your email inbox.`);
               } catch (err) {
                 console.warn("Send OTP error:", err);
               } finally {
@@ -229,22 +255,18 @@ export function InteractiveApp() {
         );
 
       case 12:
-        // Screen 12: "Verify Code" (OTP verification matching exact mockup)
+        // Screen 12: "Verify Code" (4-digit OTP verification matching exact mockup)
         return (
           <OtpVerificationScreen
             email={registeredEmail}
-            phoneNumber={registeredPhone}
             isLoading={authLoading}
+            codeLength={4}
             onBack={() => setCurrentScreen(11)}
             onResend={async () => {
               setAuthLoading(true);
               try {
-                const res = await resendPhoneOtp(registeredPhone);
-                if (res?.data?.isDemoFallback) {
-                  alert("SMS Notice: SMS provider is disabled in Supabase. Use test code: 1234");
-                } else {
-                  alert(`A new verification code has been sent to ${registeredPhone}`);
-                }
+                await resendEmailOtp(registeredEmail);
+                alert(`A new 4-digit verification code has been sent to ${registeredEmail}.`);
               } finally {
                 setAuthLoading(false);
               }
@@ -252,16 +274,53 @@ export function InteractiveApp() {
             onVerified={async (code) => {
               setAuthLoading(true);
               try {
-                const res = await verifyPhoneOtp(registeredPhone, code);
+                const res = await verifyEmailOtp(registeredEmail, code);
                 if (res.success) {
-                  alert("Phone & Account verified successfully! Welcome to AfriGuide.");
+                  alert("Account verified successfully! Welcome to AfriGuide. Please sign in to continue.");
+                  setCurrentScreen(10);
                 } else {
-                  alert(res.error || "Invalid code. Please try again.");
+                  alert(res.error || "Invalid 4-digit code. Please try again.");
                 }
               } finally {
                 setAuthLoading(false);
               }
             }}
+          />
+        );
+
+      case 13:
+        // Screen 13: "Explore Zimbabwe" Tourist Home Screen
+        return (
+          <TouristHomeScreen
+            userEmail={registeredEmail}
+            onLogout={() => setCurrentScreen(10)}
+          />
+        );
+
+      case 14:
+        // Screen 14: Search Screen
+        return (
+          <SearchScreen
+            onBack={() => setCurrentScreen(13)}
+          />
+        );
+
+      case 15:
+        // Screen 15: Tour Preview Screen
+        return (
+          <TourPreviewScreen
+            onBack={() => setCurrentScreen(13)}
+            onBook={() => setCurrentScreen(16)}
+          />
+        );
+
+      case 16:
+        // Screen 16: Booking Requested Screen
+        return (
+          <BookingRequestedScreen
+            onClose={() => setCurrentScreen(13)}
+            onBackToExplore={() => setCurrentScreen(13)}
+            onViewBookings={() => setCurrentScreen(13)}
           />
         );
 

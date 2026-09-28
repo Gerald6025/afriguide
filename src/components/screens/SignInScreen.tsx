@@ -6,6 +6,7 @@ import { IosHomeIndicator } from "../IosStatusBar";
 import { AfriGuideLogoBadge } from "../AfriGuideLogo";
 
 interface SignInScreenProps {
+  initialEmail?: string;
   onBack?: () => void;
   onSignUp?: () => void;
   onForgotPassword?: () => void;
@@ -59,12 +60,13 @@ function GoogleIcon() {
 }
 
 export function SignInScreen({
+  initialEmail = "",
   onBack,
   onSignUp,
   onForgotPassword,
   onLogin,
 }: SignInScreenProps) {
-  const [email, setEmail] = useState<string>("");
+  const [email, setEmail] = useState<string>(initialEmail);
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
 

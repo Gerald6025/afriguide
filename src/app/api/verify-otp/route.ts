@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -9,6 +10,30 @@ if (!global.__otpStore) {
   global.__otpStore = new Map();
 }
 const otpStore = global.__otpStore;
+
+function verifyOtpToken(tokenString: string, email: string, code: string): boolean {
+  try {
+    const secret = process.env.OTP_SECRET || "afriguide-otp-secret-key-2026";
+    const decoded = Buffer.from(tokenString, "base64").toString("utf-8");
+    const [tEmail, tCode, tExp, tHmac] = decoded.split(":");
+    if (!tEmail || !tCode || !tExp || !tHmac) return false;
+
+    // Check HMAC signature integrity
+    const expectedHmac = crypto
+      .createHmac("sha256", secret)
+      .update(`${tEmail}:${tCode}:${tExp}`)
+      .digest("hex");
+    if (tHmac !== expectedHmac) return false;
+
+    // Check expiration (15 minutes)
+    if (Date.now() > Number(tExp)) return false;
+
+    // Check email and 4-digit code match
+    return tEmail.toLowerCase() === email.toLowerCase() && tCode === code;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -34,9 +59,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, verified: true });
     }
 
-    // 2. Check the stored OTP code
-    const stored = otpStore.get(cleanEmail);
+    // 2. Check the stateless HMAC cookie (primary for Vercel multi-instance Serverless)
+    const cookieHeader = request.headers.get("cookie") || "";
+    const cookieMatch = cookieHeader.match(/afriguide_otp=([^;]+)/);
+    const otpCookie = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
 
+    if (otpCookie) {
+      const isCookieValid = verifyOtpToken(otpCookie, cleanEmail, cleanCode);
+      if (isCookieValid) {
+        otpStore.delete(cleanEmail);
+        const res = NextResponse.json({ success: true, verified: true });
+        // Clear the OTP cookie
+        res.cookies.delete("afriguide_otp");
+        return res;
+      }
+    }
+
+    // 3. Fallback: Check the in-memory OTP store (for local dev instances)
+    const stored = otpStore.get(cleanEmail);
     if (stored) {
       if (Date.now() > stored.expiresAt) {
         otpStore.delete(cleanEmail);

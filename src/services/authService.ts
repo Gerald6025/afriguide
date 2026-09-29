@@ -22,10 +22,11 @@ export async function signUpUser({
   password = "AfriGuidePassword123!",
   role,
 }: SignUpParams): Promise<AuthResult> {
+  const cleanEmail = email.trim().toLowerCase();
   try {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         data: {

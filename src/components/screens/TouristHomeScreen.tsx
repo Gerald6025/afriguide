@@ -21,7 +21,11 @@ import {
 import { IosHomeIndicator } from "../IosStatusBar";
 import { SearchScreen } from "./SearchScreen";
 import { TourPreviewScreen, TourPreviewData } from "./TourPreviewScreen";
-import { BookingRequestedScreen } from "./BookingRequestedScreen";
+import { BookingRequestedScreen, PaymentInfo } from "./BookingRequestedScreen";
+import { BookExperienceScreen, BookingDetails } from "./BookExperienceScreen";
+import { PaymentScreen } from "./PaymentScreen";
+import { BookingDetailsScreen } from "./BookingDetailsScreen";
+import { ProfileScreen } from "./ProfileScreen";
 
 interface Experience {
   id: string;
@@ -117,19 +121,52 @@ const TOP_GUIDES = [
 
 interface TouristHomeScreenProps {
   userEmail?: string;
+  userName?: string;
+  avatarUrl?: string;
+  createdAt?: string;
+  role?: "tourist" | "guide";
   onLogout?: () => void;
+  onUpdateName?: (newName: string) => void;
+  onUpdateAvatar?: (newAvatar: string) => void;
 }
 
 export function TouristHomeScreen({
-  userEmail = "tourist@afriguide.com",
+  userEmail = "geraldgchibanda6025@gmail.com",
+  userName: propUserName,
+  avatarUrl: propAvatarUrl,
+  createdAt: propCreatedAt,
+  role = "tourist",
   onLogout,
+  onUpdateName,
+  onUpdateAvatar,
 }: TouristHomeScreenProps) {
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(() => {
+    if (propAvatarUrl && propAvatarUrl.trim()) return propAvatarUrl;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_avatar");
+      if (stored) return stored;
+    }
+    return "/images/user_avatar.png";
+  });
+
+  const [currentUserName, setCurrentUserName] = useState<string>(() => {
+    if (propUserName && propUserName.trim()) return propUserName;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_name");
+      if (stored) return stored;
+    }
+    return "Gerald Chibanda";
+  });
   const [activeTab, setActiveTab] = useState<"explore" | "search" | "calendar" | "messages" | "profile">("explore");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [selectedTour, setSelectedTour] = useState<TourPreviewData | null>(null);
+  const [bookingExperienceTour, setBookingExperienceTour] = useState<TourPreviewData | null>(null);
+  const [paymentBookingDetails, setPaymentBookingDetails] = useState<BookingDetails | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [bookingTour, setBookingTour] = useState<TourPreviewData | null>(null);
+  const [viewingBookingDetails, setViewingBookingDetails] = useState<boolean>(false);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -152,20 +189,80 @@ export function TouristHomeScreen({
     return matchesCategory && matchesSearch;
   });
 
+  if (viewingBookingDetails) {
+    return (
+      <BookingDetailsScreen
+        tour={bookingTour || selectedTour || undefined}
+        bookingDetails={paymentBookingDetails || undefined}
+        paymentInfo={paymentInfo || undefined}
+        onBack={() => {
+          setViewingBookingDetails(false);
+          setBookingTour(null);
+          setPaymentBookingDetails(null);
+          setPaymentInfo(null);
+          setBookingExperienceTour(null);
+          setSelectedTour(null);
+          setActiveTab("explore");
+        }}
+        onMessageGuide={() => {
+          setViewingBookingDetails(false);
+          setBookingTour(null);
+          setPaymentBookingDetails(null);
+          setPaymentInfo(null);
+          setActiveTab("messages");
+        }}
+      />
+    );
+  }
+
   if (bookingTour) {
     return (
       <BookingRequestedScreen
         tour={bookingTour}
-        onClose={() => setBookingTour(null)}
+        bookingDetails={paymentBookingDetails || undefined}
+        paymentInfo={paymentInfo || undefined}
+        onClose={() => {
+          setBookingTour(null);
+          setPaymentBookingDetails(null);
+          setPaymentInfo(null);
+          setBookingExperienceTour(null);
+        }}
         onBackToExplore={() => {
           setBookingTour(null);
+          setPaymentBookingDetails(null);
+          setPaymentInfo(null);
+          setBookingExperienceTour(null);
           setSelectedTour(null);
           setActiveTab("explore");
         }}
         onViewBookings={() => {
-          setBookingTour(null);
-          setSelectedTour(null);
-          setActiveTab("calendar");
+          setViewingBookingDetails(true);
+        }}
+      />
+    );
+  }
+
+  if (paymentBookingDetails && !bookingTour) {
+    return (
+      <PaymentScreen
+        bookingDetails={paymentBookingDetails}
+        onBack={() => setPaymentBookingDetails(null)}
+        onPayNow={(info) => {
+          setPaymentInfo(info);
+          setBookingTour(paymentBookingDetails.tour);
+          setBookingExperienceTour(null);
+        }}
+      />
+    );
+  }
+
+  if (bookingExperienceTour) {
+    return (
+      <BookExperienceScreen
+        tour={bookingExperienceTour}
+        onBack={() => setBookingExperienceTour(null)}
+        onConfirmBooking={(details) => {
+          setPaymentBookingDetails(details);
         }}
       />
     );
@@ -176,7 +273,7 @@ export function TouristHomeScreen({
       <TourPreviewScreen
         tour={selectedTour}
         onBack={() => setSelectedTour(null)}
-        onBook={(tour) => setBookingTour(tour)}
+        onBook={(tour) => setBookingExperienceTour(tour)}
       />
     );
   }
@@ -197,6 +294,29 @@ export function TouristHomeScreen({
             groupSize: "2-10 people",
           })
         }
+      />
+    );
+  }
+
+  if (activeTab === "profile") {
+    return (
+      <ProfileScreen
+        userName={currentUserName}
+        userEmail={userEmail}
+        avatarUrl={currentUserAvatar}
+        createdAt={propCreatedAt}
+        role={role}
+        onUpdateName={(newName) => {
+          setCurrentUserName(newName);
+          onUpdateName?.(newName);
+        }}
+        onUpdateAvatar={(newAvatar) => {
+          setCurrentUserAvatar(newAvatar);
+          onUpdateAvatar?.(newAvatar);
+        }}
+        onBack={() => setActiveTab("explore")}
+        onLogout={onLogout}
+        onBecomeGuide={() => alert("Apply to become an AfriGuide certified guide!")}
       />
     );
   }
@@ -228,12 +348,12 @@ export function TouristHomeScreen({
             <button
               type="button"
               onClick={() => setActiveTab("profile")}
-              className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-stone-200/80 hover:ring-[#1E3F32] transition-all cursor-pointer block"
+              className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-stone-200/80 hover:ring-[#1E3F32] transition-all cursor-pointer block shrink-0"
               title={`Signed in as ${userEmail}`}
             >
               <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
-                alt="User Avatar"
+                src={currentUserAvatar}
+                alt={currentUserName || "User Avatar"}
                 className="w-full h-full object-cover"
               />
             </button>
@@ -569,9 +689,7 @@ export function TouristHomeScreen({
           type="button"
           onClick={() => setActiveTab("profile")}
           aria-label="Profile"
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-            activeTab === "profile" ? "text-[#1E3F32]" : "text-stone-500 hover:text-black"
-          }`}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
         >
           <UserIcon className="w-5 h-5 stroke-[2.2]" />
         </button>

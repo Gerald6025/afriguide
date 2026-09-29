@@ -11,29 +11,52 @@ import {
   Clock,
   Users,
 } from "lucide-react";
-import { IosHomeIndicator } from "../IosStatusBar";
 import { TourPreviewData } from "./TourPreviewScreen";
+import { BookingDetails } from "./BookExperienceScreen";
+
+export interface PaymentInfo {
+  method: string;
+  totalAmount: number;
+}
 
 interface BookingRequestedScreenProps {
   tour?: TourPreviewData;
+  bookingDetails?: BookingDetails;
+  paymentInfo?: PaymentInfo;
   onClose: () => void;
   onViewBookings?: () => void;
   onBackToExplore: () => void;
 }
 
 export function BookingRequestedScreen({
-  tour,
+  tour: propTour,
+  bookingDetails,
+  paymentInfo,
   onClose,
   onViewBookings,
   onBackToExplore,
 }: BookingRequestedScreenProps) {
   const [copied, setCopied] = useState<boolean>(false);
 
-  const guideName = tour?.guideName || "Desire Sibanda";
-  const tourTitle = tour?.title || "Hwange Elephant Walk";
-  const tourLocation = tour?.location || "Hwange National Park";
+  // Derive dynamic details from booking state passed from previous screens
+  const activeTour = bookingDetails?.tour || propTour;
+  const guideName = activeTour?.guideName || "Mthabisi M";
+  const tourTitle = activeTour?.title || "Hwange Elephant Walk";
+  const tourLocation = activeTour?.location || "Hwange National Park";
   const bookingId = "#VVF -7843957";
-  const totalCharged = tour?.pricePerPerson ? `$${tour.pricePerPerson * 2 + 22}` : "$182";
+
+  const guestCount = bookingDetails?.peopleCount || 2;
+  const tourDate = bookingDetails?.date || "Tuesday, 22 July, 2026";
+  const timeSlot = bookingDetails?.time || "9:41 AM";
+
+  // Exact total amount matching previous payment screen
+  const totalCharged = paymentInfo?.totalAmount
+    ? `$${paymentInfo.totalAmount}`
+    : bookingDetails?.totalPrice
+    ? `$${bookingDetails.totalPrice + 12 + 15 * guestCount}`
+    : activeTour?.pricePerPerson
+    ? `$${activeTour.pricePerPerson * guestCount + 12 + 15 * guestCount}`
+    : "$182";
 
   const handleCopy = () => {
     navigator.clipboard?.writeText(bookingId);
@@ -75,7 +98,7 @@ export function BookingRequestedScreen({
           Booking requested
         </h1>
         <p className="text-[13px] text-stone-600 text-center max-w-[320px] mx-auto mt-1 leading-snug">
-          Your request has been sent to {guideName},you&apos;ll recieve a comfirmation within 24 hours
+          Your request has been sent to {guideName}, you&apos;ll receive a confirmation within 24 hours
         </p>
 
         {/* 3. Booking ID Row */}
@@ -104,7 +127,7 @@ export function BookingRequestedScreen({
           </button>
         </div>
 
-        {/* 4. Details List Cards */}
+        {/* 4. Details List Cards (Dynamically matched with previous page) */}
         <div className="flex flex-col gap-2.5 w-full mt-2">
           {/* Item 1: Location */}
           <div className="w-full p-3.5 rounded-[16px] bg-[#FAFAFA] border border-stone-100 shadow-2xs flex items-center gap-3.5">
@@ -128,7 +151,7 @@ export function BookingRequestedScreen({
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-[14.5px] font-bold text-black">
-                Tuesday, 22 July, 2026
+                {tourDate}
               </span>
               <span className="text-[12px] font-normal text-stone-500 mt-0.5">
                 Tour date
@@ -143,10 +166,10 @@ export function BookingRequestedScreen({
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-[14.5px] font-bold text-black">
-                Morning slot, 09:45am
+                {timeSlot}
               </span>
               <span className="text-[12px] font-normal text-stone-500 mt-0.5">
-                Whole day
+                Selected time slot
               </span>
             </div>
           </div>
@@ -158,10 +181,10 @@ export function BookingRequestedScreen({
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-[14.5px] font-bold text-black">
-                4 Guests
+                {guestCount} {guestCount === 1 ? "Guest" : "Guests"}
               </span>
               <span className="text-[12px] font-normal text-stone-500 mt-0.5">
-                3 adults, 1 child
+                Group reservation
               </span>
             </div>
           </div>
@@ -198,11 +221,6 @@ export function BookingRequestedScreen({
             Back to explore
           </button>
         </div>
-      </div>
-
-      {/* ── iOS Home Indicator ── */}
-      <div className="w-full pointer-events-none mt-2">
-        <IosHomeIndicator theme="dark" />
       </div>
     </div>
   );

@@ -16,7 +16,11 @@ import { OtpVerificationScreen } from "./screens/OtpVerificationScreen";
 import { TouristHomeScreen } from "./screens/TouristHomeScreen";
 import { SearchScreen } from "./screens/SearchScreen";
 import { TourPreviewScreen } from "./screens/TourPreviewScreen";
-import { BookingRequestedScreen } from "./screens/BookingRequestedScreen";
+import { BookingRequestedScreen, PaymentInfo } from "./screens/BookingRequestedScreen";
+import { BookExperienceScreen, BookingDetails } from "./screens/BookExperienceScreen";
+import { PaymentScreen } from "./screens/PaymentScreen";
+import { BookingDetailsScreen } from "./screens/BookingDetailsScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import {
   signUpUser,
   signInUser,
@@ -43,9 +47,38 @@ import {
 export function InteractiveApp() {
   const [currentScreen, setCurrentScreen] = useState<number>(1);
   const [confirmedRole, setConfirmedRole] = useState<"tourist" | "guide">("tourist");
+  const [userFullName, setUserFullName] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_name");
+      if (stored) return stored;
+    }
+    return "Gerald Chibanda";
+  });
   const [registeredPhone, setRegisteredPhone] = useState<string>("+263 78 413 8081");
-  const [registeredEmail, setRegisteredEmail] = useState<string>("john@email.com");
+  const [registeredEmail, setRegisteredEmail] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_email");
+      if (stored) return stored;
+    }
+    return "geraldgchibanda6025@gmail.com";
+  });
+  const [accountCreatedAt, setAccountCreatedAt] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_account_created");
+      if (stored) return stored;
+    }
+    return new Date().toISOString();
+  });
+  const [userAvatar, setUserAvatar] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_avatar");
+      if (stored) return stored;
+    }
+    return "/images/user_avatar.png";
+  });
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [demoBookingDetails, setDemoBookingDetails] = useState<BookingDetails | null>(null);
+  const [demoPaymentInfo, setDemoPaymentInfo] = useState<PaymentInfo | null>(null);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -173,8 +206,22 @@ export function InteractiveApp() {
             onBack={() => setCurrentScreen(8)}
             onSignIn={() => setCurrentScreen(10)}
             onCreateAccount={async (data) => {
+              if (data?.name) {
+                setUserFullName(data.name);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("afriguide_user_name", data.name);
+                }
+              }
               if (data?.email) {
                 setRegisteredEmail(data.email);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("afriguide_user_email", data.email);
+                }
+              }
+              const now = new Date().toISOString();
+              setAccountCreatedAt(now);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_account_created", now);
               }
               setAuthLoading(true);
               try {
@@ -187,11 +234,13 @@ export function InteractiveApp() {
                 if (!res.success && res.error) {
                   console.info("Supabase note:", res.error);
                 }
+                // Send the 4-digit verification code directly to their email via Gmail SMTP
+                await sendEmailOtp(data.email);
               } catch (err) {
                 console.warn("Sign up caught:", err);
               } finally {
                 setAuthLoading(false);
-                setCurrentScreen(11);
+                setCurrentScreen(12);
               }
             }}
           />
@@ -210,8 +259,25 @@ export function InteractiveApp() {
               try {
                 if (data.email) {
                   setRegisteredEmail(data.email);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("afriguide_user_email", data.email);
+                  }
                 }
                 const res = await signInUser(data.email, data.password);
+                // Extract user metadata from Supabase
+                const userObj = (res as any)?.data?.user;
+                if (userObj?.user_metadata?.full_name) {
+                  setUserFullName(userObj.user_metadata.full_name);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("afriguide_user_name", userObj.user_metadata.full_name);
+                  }
+                }
+                if (userObj?.created_at) {
+                  setAccountCreatedAt(userObj.created_at);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("afriguide_account_created", userObj.created_at);
+                  }
+                }
                 if (res.success || (data.password && data.password.length >= 4)) {
                   // Navigate to Tourist Home Screen!
                   setCurrentScreen(13);
@@ -291,6 +357,22 @@ export function InteractiveApp() {
         return (
           <TouristHomeScreen
             userEmail={registeredEmail}
+            userName={userFullName}
+            avatarUrl={userAvatar}
+            createdAt={accountCreatedAt}
+            role={confirmedRole}
+            onUpdateName={(newName) => {
+              setUserFullName(newName);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_name", newName);
+              }
+            }}
+            onUpdateAvatar={(newAvatar) => {
+              setUserAvatar(newAvatar);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_avatar", newAvatar);
+              }
+            }}
             onLogout={() => setCurrentScreen(10)}
           />
         );
@@ -308,7 +390,7 @@ export function InteractiveApp() {
         return (
           <TourPreviewScreen
             onBack={() => setCurrentScreen(13)}
-            onBook={() => setCurrentScreen(16)}
+            onBook={() => setCurrentScreen(17)}
           />
         );
 
@@ -316,9 +398,74 @@ export function InteractiveApp() {
         // Screen 16: Booking Requested Screen
         return (
           <BookingRequestedScreen
+            bookingDetails={demoBookingDetails || undefined}
+            paymentInfo={demoPaymentInfo || undefined}
             onClose={() => setCurrentScreen(13)}
             onBackToExplore={() => setCurrentScreen(13)}
-            onViewBookings={() => setCurrentScreen(13)}
+            onViewBookings={() => setCurrentScreen(19)}
+          />
+        );
+
+      case 17:
+        // Screen 17: Book Experience Screen (interactive calendar, time slots, group counter)
+        return (
+          <BookExperienceScreen
+            onBack={() => setCurrentScreen(15)}
+            onConfirmBooking={(details) => {
+              setDemoBookingDetails(details);
+              setCurrentScreen(18);
+            }}
+          />
+        );
+
+      case 18:
+        // Screen 18: Payment Screen (EcoCash, Card, Cash, pricing breakdown)
+        return (
+          <PaymentScreen
+            bookingDetails={demoBookingDetails || undefined}
+            onBack={() => setCurrentScreen(17)}
+            onPayNow={(info) => {
+              setDemoPaymentInfo(info);
+              setCurrentScreen(16);
+            }}
+          />
+        );
+
+      case 19:
+        // Screen 19: Booking Details Screen (confirmed status, tour summary, booking info, what's included, message guide/calendar)
+        return (
+          <BookingDetailsScreen
+            bookingDetails={demoBookingDetails || undefined}
+            paymentInfo={demoPaymentInfo || undefined}
+            onBack={() => setCurrentScreen(13)}
+            onMessageGuide={() => setCurrentScreen(13)}
+          />
+        );
+
+      case 20:
+        // Screen 20: Profile Screen (Tourist)
+        return (
+          <ProfileScreen
+            userName={userFullName}
+            userEmail={registeredEmail}
+            avatarUrl={userAvatar}
+            createdAt={accountCreatedAt}
+            role={confirmedRole}
+            onUpdateName={(newName) => {
+              setUserFullName(newName);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_name", newName);
+              }
+            }}
+            onUpdateAvatar={(newAvatar) => {
+              setUserAvatar(newAvatar);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_avatar", newAvatar);
+              }
+            }}
+            onBack={() => setCurrentScreen(13)}
+            onLogout={() => setCurrentScreen(10)}
+            onBecomeGuide={() => alert("Apply to become an AfriGuide certified guide!")}
           />
         );
 

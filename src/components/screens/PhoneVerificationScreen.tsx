@@ -180,7 +180,7 @@ export function PhoneVerificationScreen({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden px-5 pt-3 pb-3 select-none">
+    <div className="relative w-full h-full min-h-full bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden overflow-y-auto px-5 pt-2 pb-2 select-none">
       {/* Top Header Bar with Back Arrow and Centered AfriGuide Logo Badge */}
       <div className="relative flex items-center justify-between pt-1 pb-3 w-full min-h-[44px]">
         {onBack && (

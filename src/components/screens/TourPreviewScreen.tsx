@@ -78,7 +78,7 @@ export function TourPreviewScreen({
     : [tour.imageUrl, "/images/experience_lion.jpg", "/images/experience_elephant.jpg"];
 
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col justify-between overflow-x-hidden pb-28 select-none">
+    <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-x-hidden overflow-y-auto pb-28 select-none">
       {/* ── Top Header with Back Arrow and Centered Title (No Status Bar) ── */}
       <div className="w-full bg-white px-5 pt-4 pb-2.5 shrink-0 z-20">
         <div className="relative flex items-center justify-between">

@@ -106,7 +106,7 @@ export function SearchScreen({
   });
 
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col justify-between overflow-x-hidden pb-10 select-none">
+    <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-x-hidden overflow-y-auto pb-10 select-none">
       {/* ── Top Header with Back Arrow and Centered Title ── */}
       <div className="w-full bg-white px-5 pt-4 pb-3 shrink-0">
         <div className="relative flex items-center justify-between">

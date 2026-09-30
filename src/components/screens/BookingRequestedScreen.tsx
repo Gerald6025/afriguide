@@ -65,7 +65,7 @@ export function BookingRequestedScreen({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col justify-between overflow-x-hidden pb-6 select-none">
+    <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-x-hidden overflow-y-auto pb-6 select-none">
       {/* ── Top Header with Close Icon ── */}
       <div className="w-full bg-white px-5 pt-4 pb-1 shrink-0 flex justify-end">
         <button

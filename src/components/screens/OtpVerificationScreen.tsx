@@ -82,17 +82,17 @@ export function OtpVerificationScreen({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden px-5 pt-3 pb-3 select-none">
+    <div className="relative w-full h-[100dvh] max-h-[100dvh] bg-[#FDFDFD] flex flex-col justify-between overflow-hidden px-4 sm:px-5 pt-1 pb-1 select-none">
       {/* Top Header with Back Arrow and Centered AfriGuide Logo Badge */}
-      <div className="relative flex items-center justify-between pt-1 pb-3 w-full min-h-[44px]">
+      <div className="relative flex items-center justify-between pt-1 pb-2 w-full min-h-[40px] shrink-0">
         {onBack && (
           <button
             type="button"
             onClick={onBack}
             aria-label="Go back"
-            className="w-10 h-10 flex items-center justify-center -ml-2 text-black active:scale-95 transition-transform cursor-pointer z-10"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center -ml-2 text-black active:scale-95 transition-transform cursor-pointer z-10"
           >
-            <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
         )}
 
@@ -101,27 +101,27 @@ export function OtpVerificationScreen({
         </div>
       </div>
 
-      <div className="w-full flex-1 flex flex-col justify-center max-w-[380px] mx-auto py-2">
+      <div className="w-full flex-1 min-h-0 flex flex-col justify-center max-w-[380px] mx-auto py-1 my-auto">
         {/* Title & Subtitle */}
-        <div className="text-center mb-8">
-          <h1 className="text-[32px] font-black text-black tracking-tight leading-[1.1] mb-2">
+        <div className="text-center mb-5 sm:mb-7 shrink-0">
+          <h1 className="text-[28px] sm:text-[32px] font-black text-black tracking-tight leading-[1.1] mb-1.5">
             Verify Code
           </h1>
-          <p className="text-stone-700 text-[14.5px] font-normal leading-snug">
+          <p className="text-stone-700 text-[13.5px] sm:text-[14.5px] font-normal leading-snug">
             Please enter the 4-digit code sent to
           </p>
-          <p className="text-[#E8622A] font-bold text-[15.5px] leading-snug mt-0.5 tracking-wide break-all">
+          <p className="text-[#E8622A] font-bold text-[14.5px] sm:text-[15.5px] leading-snug mt-0.5 tracking-wide break-all">
             {email || phoneNumber}
           </p>
         </div>
 
         {/* 4-Digit OTP Code Inputs */}
         <form onSubmit={handleVerify} className="w-full flex flex-col items-center">
-          <div className="flex justify-center gap-3.5 sm:gap-4 mb-8 w-full">
+          <div className="flex justify-center gap-3 sm:gap-4 mb-6 sm:mb-8 w-full">
             {code.map((digit, index) => (
               <div
                 key={index}
-                className="relative w-[58px] h-[64px]"
+                className="relative w-[52px] h-[58px] sm:w-[58px] sm:h-[64px]"
               >
                 <input
                   ref={(el) => {

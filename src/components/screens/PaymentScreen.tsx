@@ -59,7 +59,7 @@ export function PaymentScreen({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden select-none">
+    <div className="relative w-full h-full min-h-full bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden overflow-y-auto select-none">
       {/* ── Top iOS Status Bar (Null-safe) ── */}
       <IosStatusBar theme="dark" />
 

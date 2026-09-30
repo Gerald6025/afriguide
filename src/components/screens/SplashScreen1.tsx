@@ -20,7 +20,7 @@ export function SplashScreen1({ onNext }: SplashScreen1Props) {
   return (
     <div
       onClick={onNext}
-      className="relative w-full h-full min-h-screen bg-white flex flex-col justify-between select-none cursor-pointer"
+      className="relative w-full h-full min-h-full bg-white flex flex-col justify-between select-none cursor-pointer"
     >
       {/* Centered Compass Loading Icon using exact image */}
       <div className="flex-1 flex items-center justify-center">

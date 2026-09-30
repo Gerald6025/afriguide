@@ -234,7 +234,7 @@ export function InteractiveApp() {
                 if (!res.success && res.error) {
                   console.info("Supabase note:", res.error);
                 }
-                // Send the 4-digit verification code directly to their email via Gmail SMTP
+                // Send the 4-digit verification code directly to their email via Resend / SMTP
                 await sendEmailOtp(data.email);
               } catch (err) {
                 console.warn("Sign up caught:", err);
@@ -475,9 +475,9 @@ export function InteractiveApp() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white flex justify-center selection:bg-[#1E3F32] selection:text-white">
+    <div className="w-full min-h-[100dvh] h-[100dvh] bg-white flex justify-center selection:bg-[#1E3F32] selection:text-white overflow-hidden">
       {/* Edge-to-edge on mobile, max-w-[430px] centered on desktop */}
-      <div className="w-full max-w-[430px] min-h-screen bg-white flex flex-col relative shadow-none">
+      <div className="w-full max-w-[430px] h-[100dvh] max-h-[100dvh] bg-white flex flex-col relative shadow-none overflow-hidden">
         {renderScreen()}
       </div>
     </div>

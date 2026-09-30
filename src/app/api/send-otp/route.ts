@@ -49,38 +49,83 @@ export async function POST(request: Request) {
     // 4. Resolve SMTP Credentials
     // Fallback directly to user-provided Gmail credentials so Vercel can deliver emails
     // even before the user manually configures environment variables in the Vercel dashboard.
+    // Check for modern transactional providers first (Resend or custom SMTP)
+    const resendApiKey = process.env.RESEND_API_KEY?.trim();
+    const smtpHost = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
+    const smtpPort = parseInt(process.env.SMTP_PORT || "465", 10);
     const smtpUser = process.env.SMTP_USER?.trim() || "geraldgchibanda6025@gmail.com";
     const rawPass = process.env.SMTP_PASS?.trim() || "gbzqhjytovkoqkdw";
     const smtpPass = rawPass ? rawPass.replace(/\s+/g, "") : null;
-    const emailFrom = process.env.EMAIL_FROM || `"AfriGuide" <${smtpUser}>`;
+    const emailFrom = process.env.EMAIL_FROM || `Gerald Chibanda <${smtpUser}>`;
 
     let emailDelivered = false;
     let deliveryError: string | null = null;
 
-    if (smtpUser && smtpPass) {
+    // Option A: If user provided a free Resend API key, use direct Resend HTTP API for top inbox placement
+    if (resendApiKey) {
+      try {
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || "AfriGuide <onboarding@resend.dev>",
+            to: [cleanEmail],
+            subject: `AfriGuide Verification Code: ${fourDigitCode}`,
+            text: `Your AfriGuide verification code is: ${fourDigitCode}\n\nValid for 15 minutes. Enter this code to verify your AfriGuide account.`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 460px; margin: 0 auto; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <h2 style="color: #1E3F32; margin-top: 0;">AfriGuide</h2>
+                <p style="font-size: 15px; color: #374151;">Your account verification code is:</p>
+                <div style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #1E3F32; padding: 12px 0;">
+                  ${fourDigitCode}
+                </div>
+                <p style="font-size: 13px; color: #6b7280;">Valid for 15 minutes. If you did not request this, please ignore this email.</p>
+              </div>
+            `,
+          }),
+        });
+        const resendData = await resendRes.json();
+        if (resendRes.ok && resendData.id) {
+          emailDelivered = true;
+        } else {
+          deliveryError = resendData.message || "Resend API error";
+          console.warn("Resend failed, falling back to SMTP:", deliveryError);
+        }
+      } catch (rErr) {
+        console.warn("Resend fetch caught:", rErr);
+      }
+    }
+
+    // Option B: High-deliverability SMTP (Gmail or Brevo/SendGrid)
+    if (!emailDelivered && smtpUser && smtpPass) {
       const emailOptions = {
         from: emailFrom,
+        replyTo: smtpUser,
         to: cleanEmail,
-        subject: `${fourDigitCode} is your AfriGuide verification code`,
+        subject: `Your AfriGuide verification code is ${fourDigitCode}`,
+        text: `Hello,\n\nYour AfriGuide 4-digit verification code is: ${fourDigitCode}\n\nEnter this code on the verification screen to activate your account. This code is valid for 15 minutes.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nGerald Chibanda\nAfriGuide Platform`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 20px; border: 1px solid #e5e7eb;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: #1E3F32; font-size: 26px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">AfriGuide</h1>
-              <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Step into your next great adventure</p>
+          <div style="font-family: Arial, sans-serif; font-size: 15px; color: #222222; line-height: 1.5; max-width: 500px; margin: 0 auto; padding: 20px;">
+            <p style="font-size: 18px; font-weight: bold; color: #1E3F32; margin-bottom: 16px;">
+              AfriGuide Verification Code
+            </p>
+            <p>Hello,</p>
+            <p>Your 4-digit verification code for AfriGuide is:</p>
+            <div style="margin: 20px 0; padding: 16px 24px; background-color: #f7f9f8; border-left: 4px solid #1E3F32; display: inline-block;">
+              <span style="font-size: 30px; font-weight: bold; letter-spacing: 6px; color: #1E3F32; font-family: monospace;">
+                ${fourDigitCode}
+              </span>
             </div>
-
-            <div style="background: #F9FAFB; border-radius: 16px; padding: 24px; text-align: center; border: 1px solid #f3f4f6; margin-bottom: 24px;">
-              <p style="color: #374151; font-size: 15px; margin: 0 0 16px 0; font-weight: 500;">Your 4-digit verification code is:</p>
-              <div style="display: inline-block; background: #ffffff; border: 2px solid #1E3F32; border-radius: 14px; padding: 12px 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <span style="font-family: monospace; font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #1E3F32; display: inline-block; padding-left: 12px;">
-                  ${fourDigitCode}
-                </span>
-              </div>
-              <p style="color: #9ca3af; font-size: 13px; margin: 16px 0 0 0;">Valid for 15 minutes</p>
-            </div>
-
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0; text-align: center;">
-              Enter this code on the verification screen to activate your account. If you did not request this, please ignore this email.
+            <p style="color: #555555; font-size: 14px;">This code is valid for <strong>15 minutes</strong>.</p>
+            <p style="color: #777777; font-size: 13px; margin-top: 24px;">
+              If you didn't create an AfriGuide account, you can safely ignore this email.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0 16px 0;" />
+            <p style="font-size: 12px; color: #888888; margin: 0;">
+              AfriGuide • Zimbabwe
             </p>
           </div>
         `,
@@ -89,9 +134,9 @@ export async function POST(request: Request) {
       // Attempt 1: Port 465 (SSL)
       try {
         const transporter465 = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 465,
-          secure: true,
+          host: smtpHost,
+          port: smtpPort === 587 ? 587 : 465,
+          secure: smtpPort !== 587,
           auth: { user: smtpUser, pass: smtpPass },
           tls: { rejectUnauthorized: false },
           connectionTimeout: 10000,
@@ -102,11 +147,11 @@ export async function POST(request: Request) {
         await transporter465.sendMail(emailOptions);
         emailDelivered = true;
       } catch (err465: unknown) {
-        console.warn("SMTP Port 465 failed, attempting Port 587 (TLS fallback):", err465);
+        console.warn("SMTP primary port failed, attempting Port 587 fallback:", err465);
         // Attempt 2: Port 587 (TLS Fallback for cloud/serverless networks that block 465)
         try {
           const transporter587 = nodemailer.createTransport({
-            host: "smtp.gmail.com",
+            host: smtpHost,
             port: 587,
             secure: false,
             auth: { user: smtpUser, pass: smtpPass },

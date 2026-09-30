@@ -20,7 +20,7 @@ export function SplashScreen2({ onNext }: SplashScreen2Props) {
   return (
     <div
       onClick={onNext}
-      className="relative w-full h-full min-h-screen bg-white flex flex-col justify-between select-none cursor-pointer"
+      className="relative w-full h-full min-h-full bg-white flex flex-col justify-between select-none cursor-pointer"
     >
       {/* Centered Full AfriGuide Logo Brand Pill */}
       <div className="flex-1 flex items-center justify-center">

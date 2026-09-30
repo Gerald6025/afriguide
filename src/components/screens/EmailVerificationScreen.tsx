@@ -33,9 +33,9 @@ export function EmailVerificationScreen({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden px-5 pt-3 pb-3 select-none">
+    <div className="relative w-full h-[100dvh] max-h-[100dvh] bg-[#FDFDFD] flex flex-col justify-between overflow-hidden px-4 sm:px-5 pt-1 pb-1 select-none">
       {/* Top Header Bar with Back Arrow and Centered AfriGuide Logo Badge */}
-      <div className="relative flex items-center justify-between pt-1 pb-3 w-full min-h-[44px]">
+      <div className="relative flex items-center justify-between pt-1 pb-2 w-full min-h-[40px] shrink-0">
         {onBack && (
           <button
             type="button"

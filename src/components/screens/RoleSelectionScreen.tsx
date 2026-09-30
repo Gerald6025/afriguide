@@ -58,16 +58,16 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-white flex flex-col justify-between overflow-hidden px-5 pt-3 pb-2 select-none">
+    <div className="relative w-full h-[100dvh] max-h-[100dvh] bg-white flex flex-col justify-between overflow-hidden px-4 sm:px-5 pt-1 pb-1 select-none">
       {/* Top Header Bar with Back Arrow & Centered Logo Pill */}
-      <div className="relative flex items-center justify-between pt-1 pb-3 w-full">
+      <div className="relative flex items-center justify-between pt-1 pb-1 w-full shrink-0">
         <button
           type="button"
           onClick={onBack}
           aria-label="Go back"
-          className="w-10 h-10 flex items-center justify-center -ml-2 text-black active:scale-95 transition-transform cursor-pointer z-10"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center -ml-2 text-black active:scale-95 transition-transform cursor-pointer z-10"
         >
-          <ArrowLeft className="w-6 h-6 stroke-[2.2]" />
+          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
         </button>
 
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -76,64 +76,64 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
       </div>
 
       {/* Title & Subtitle */}
-      <div className="text-center mt-2 mb-6">
-        <h1 className="text-[32px] font-black text-black tracking-tight leading-tight mb-1.5">
+      <div className="text-center mt-0.5 mb-2 sm:mb-4 shrink-0">
+        <h1 className="text-[26px] sm:text-[30px] font-black text-black tracking-tight leading-tight mb-1">
           Who are you?
         </h1>
-        <p className="text-stone-700 text-[15px] font-normal leading-snug max-w-[280px] mx-auto">
+        <p className="text-stone-700 text-[13px] sm:text-[14.5px] font-normal leading-snug max-w-[280px] mx-auto">
           Choose your role to get the right experience
         </p>
       </div>
 
       {/* Role Cards List */}
-      <div className="flex flex-col gap-4 w-full flex-1">
+      <div className="flex flex-col gap-2.5 sm:gap-3.5 w-full my-auto shrink min-h-0">
         {/* Card 1: I'm a Tourist */}
         <div
           onClick={() => handleSelectRoleCard("tourist")}
-          className={`relative rounded-[24px] p-5 cursor-pointer transition-all ${
+          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all ${
             selectedRole === "tourist"
               ? "border-2 border-dashed border-[#E8622A] bg-white shadow-xs"
               : "border border-stone-200/90 bg-[#F9FAFB] hover:border-stone-300"
           }`}
         >
           {/* Top-Right Radio / Check Circle */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-3.5 right-3.5">
             {selectedRole === "tourist" ? (
-              <div className="w-6 h-6 rounded-full bg-[#E8622A] flex items-center justify-center text-white shadow-xs">
-                <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E8622A] flex items-center justify-center text-white shadow-xs">
+                <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3.5]" />
               </div>
             ) : (
-              <div className="w-6 h-6 rounded-full border-2 border-stone-700 bg-transparent" />
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-stone-700 bg-transparent" />
             )}
           </div>
 
           {/* Top Row: Illustration Badge + Title & Description */}
-          <div className="flex items-start gap-4 mb-4 pr-7">
-            <div className="w-[68px] h-[68px] rounded-[18px] bg-[#F7F8F9] border border-stone-100 p-1 flex items-center justify-center shrink-0">
+          <div className="flex items-start gap-3 mb-2.5 pr-7">
+            <div className="w-[52px] h-[52px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-[#F7F8F9] border border-stone-100 p-1 flex items-center justify-center shrink-0">
               <TouristIllustration />
             </div>
             <div className="flex-1 min-w-0 pt-0.5">
-              <h3 className="text-[18px] font-bold text-black leading-tight mb-1">
+              <h3 className="text-[16px] sm:text-[18px] font-bold text-black leading-tight mb-0.5">
                 I&apos;m a Tourist
               </h3>
-              <p className="text-stone-600 text-[13px] leading-snug">
+              <p className="text-stone-600 text-[12px] sm:text-[13px] leading-snug">
                 Discover and book Zimbabwe&apos;s best local guides
               </p>
             </div>
           </div>
 
           {/* Checklist */}
-          <div className="flex flex-col gap-2.5 pl-1">
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
+          <div className="flex flex-col gap-1.5 pl-1">
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
               <span>Book verified guides</span>
             </div>
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
               <span>Book tours instantly</span>
             </div>
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
               <span>Pay your way, Cash, Ecocash, card</span>
             </div>
           </div>
@@ -142,50 +142,50 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
         {/* Card 2: I'm a Guide */}
         <div
           onClick={() => handleSelectRoleCard("guide")}
-          className={`relative rounded-[24px] p-5 cursor-pointer transition-all ${
+          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all ${
             selectedRole === "guide"
               ? "border-2 border-dashed border-[#E8622A] bg-white shadow-xs"
               : "border border-stone-200/90 bg-[#F9FAFB] hover:border-stone-300"
           }`}
         >
           {/* Top-Right Radio / Check Circle */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-3.5 right-3.5">
             {selectedRole === "guide" ? (
-              <div className="w-6 h-6 rounded-full bg-[#E8622A] flex items-center justify-center text-white shadow-xs">
-                <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E8622A] flex items-center justify-center text-white shadow-xs">
+                <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[3.5]" />
               </div>
             ) : (
-              <div className="w-6 h-6 rounded-full border-2 border-stone-700 bg-transparent" />
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-stone-700 bg-transparent" />
             )}
           </div>
 
           {/* Top Row: Illustration Badge + Title & Description */}
-          <div className="flex items-start gap-4 mb-4 pr-7">
-            <div className="w-[68px] h-[68px] rounded-[18px] bg-[#FFFFFF] border border-stone-200/80 p-1 flex items-center justify-center shrink-0">
+          <div className="flex items-start gap-3 mb-2.5 pr-7">
+            <div className="w-[52px] h-[52px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-[#FFFFFF] border border-stone-200/80 p-1 flex items-center justify-center shrink-0">
               <GuideIllustration />
             </div>
             <div className="flex-1 min-w-0 pt-0.5">
-              <h3 className="text-[18px] font-bold text-black leading-tight mb-1">
+              <h3 className="text-[16px] sm:text-[18px] font-bold text-black leading-tight mb-0.5">
                 I&apos;m a Guide
               </h3>
-              <p className="text-stone-600 text-[13px] leading-snug">
-                List your tours and get discovered by tourists and earn from your local knowledge
+              <p className="text-stone-600 text-[12px] sm:text-[13px] leading-snug">
+                List your tours and get discovered by tourists
               </p>
             </div>
           </div>
 
           {/* Checklist */}
-          <div className="flex flex-col gap-2.5 pl-1">
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
-              <span>Create your listings.</span>
+          <div className="flex flex-col gap-1.5 pl-1">
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
+              <span>Create your listings</span>
             </div>
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
               <span>Manage bookings</span>
             </div>
-            <div className="flex items-center gap-2.5 text-stone-800 text-[13.5px] font-medium">
-              <Check className="w-4 h-4 stroke-[2.5] text-stone-900 shrink-0" />
+            <div className="flex items-center gap-2 text-stone-800 text-[12.5px] sm:text-[13px] font-medium">
+              <Check className="w-3.5 h-3.5 stroke-[2.5] text-stone-900 shrink-0" />
               <span>Get paid</span>
             </div>
           </div>
@@ -193,11 +193,11 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
       </div>
 
       {/* Bottom Continue Button */}
-      <div className="w-full pt-4 pb-1 mt-auto">
+      <div className="w-full pt-2 pb-1 mt-auto shrink-0">
         <button
           type="button"
           onClick={handleContinue}
-          className="w-full py-4 rounded-[20px] bg-[#F0F4F2] hover:bg-[#E5ECE7] active:scale-[0.98] text-[#1E3F32] font-bold text-[16.5px] tracking-normal transition-all cursor-pointer flex items-center justify-center shadow-2xs"
+          className="w-full py-3.5 sm:py-4 rounded-[18px] sm:rounded-[20px] bg-[#F0F4F2] hover:bg-[#E5ECE7] active:scale-[0.98] text-[#1E3F32] font-bold text-[15.5px] sm:text-[16.5px] tracking-normal transition-all cursor-pointer flex items-center justify-center shadow-2xs"
         >
           Select your role to continue
         </button>

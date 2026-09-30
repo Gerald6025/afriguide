@@ -28,9 +28,12 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
       </div>
 
       {/* Two Wide Stacked Cards */}
-      <div className="flex flex-col gap-2.5 w-full my-auto shrink min-h-0">
+      <div className="flex flex-col gap-2.5 w-full my-auto shrink min-h-0 overflow-y-auto no-scrollbar">
         {/* Top Image */}
-        <div className="relative w-full aspect-[16/9.2] max-h-[155px] sm:max-h-[180px] rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs">
+        <div
+          className="relative w-full rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs max-h-[242px] sm:max-h-[280px]"
+          style={{ aspectRatio: "16/14.35" }}
+        >
           <Image
             src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/a1b3c2dc8ceb851f86be3393c8f8ed3e5ae16b50.jpg?updatedAt=1779444084736"
             alt="Safari guide with elephants"
@@ -42,7 +45,10 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
         </div>
 
         {/* Bottom Image */}
-        <div className="relative w-full aspect-[16/9.2] max-h-[155px] sm:max-h-[180px] rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs">
+        <div
+          className="relative w-full rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs max-h-[242px] sm:max-h-[280px]"
+          style={{ aspectRatio: "16/14.35" }}
+        >
           <Image
             src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/f32bed25e5383fbb8c1f964b0db83804e3c05a21.jpg?updatedAt=1779444109386"
             alt="Desert safari adventure"

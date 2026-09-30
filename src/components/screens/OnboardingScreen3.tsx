@@ -27,10 +27,13 @@ export function OnboardingScreen3({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1">
+      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1 overflow-y-auto no-scrollbar">
         <div className="flex flex-col gap-2 shrink-0">
           {/* Top Wide Banner */}
-          <div className="relative w-full aspect-[16/9.2] max-h-[190px] sm:max-h-[210px] rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs shrink-0">
+          <div
+            className="relative w-full rounded-[20px] sm:rounded-[24px] overflow-hidden bg-stone-100 shadow-xs shrink-0 max-h-[260px] sm:max-h-[288px]"
+            style={{ aspectRatio: "16/12.59" }}
+          >
             <Image
               src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/0c75cb3f783e96198f21a9b4cebc8494fa4cf01d.jpg?updatedAt=1779444108491"
               alt="Discover hidden gems"
@@ -44,7 +47,10 @@ export function OnboardingScreen3({
           {/* 2-Image Row: Left (Bottom-Left) + Right (Bottom-Right) */}
           <div className="flex gap-2 items-start">
             {/* Bottom-Left Image */}
-            <div className="flex-1 relative aspect-[1/0.92] max-h-[140px] sm:max-h-[155px] rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs">
+            <div
+              className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[191px] sm:max-h-[212px]"
+              style={{ aspectRatio: "1/1.27" }}
+            >
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/ce19c9517c9e18ee2668242bdabd85ee882fd96a.jpg?updatedAt=1779444151536"
                 alt="African adventure"
@@ -56,8 +62,8 @@ export function OnboardingScreen3({
 
             {/* Bottom-Right Image */}
             <div
-              className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[145px] sm:max-h-[160px]"
-              style={{ aspectRatio: "1/1.04" }}
+              className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[198px] sm:max-h-[219px]"
+              style={{ aspectRatio: "1/1.43" }}
             >
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/1c534064664004f7db0d086c11a293e2d7e65a07.jpg?updatedAt=1779444091358"

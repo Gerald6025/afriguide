@@ -27,13 +27,13 @@ export function OnboardingScreen2({
       </div>
 
       {/* Main Content Section */}
-      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1">
+      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1 overflow-y-auto no-scrollbar">
         {/* 2-Column Image Collage */}
         <div className="flex gap-2 shrink-0">
           {/* LEFT COLUMN (56%): Left Top + Left Bottom */}
           <div className="w-[56%] flex flex-col gap-2">
             {/* Left Top */}
-            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[145px] sm:max-h-[160px]" style={{ aspectRatio: "4/3.2" }}>
+            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[198px] sm:max-h-[219px]" style={{ aspectRatio: "4/4.38" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/a3ac9333a1b224bf22dc85d44e3b9feeaa75f0ba.jpg?updatedAt=1779444088746"
                 alt="Guide safari experience"
@@ -45,7 +45,7 @@ export function OnboardingScreen2({
             </div>
 
             {/* Left Bottom */}
-            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[145px] sm:max-h-[160px]" style={{ aspectRatio: "4/3.2" }}>
+            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[198px] sm:max-h-[219px]" style={{ aspectRatio: "4/4.38" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/ef3ac0de8a37a7eb9faaee524bd1ee5cdbb8a407.jpg?updatedAt=1779444108780"
                 alt="Wildlife adventure"
@@ -59,7 +59,7 @@ export function OnboardingScreen2({
           {/* RIGHT COLUMN (44%): Right Top + Right Bottom */}
           <div className="w-[44%] flex flex-col gap-2">
             {/* Right Top */}
-            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[155px] sm:max-h-[170px]" style={{ aspectRatio: "1/1.2" }}>
+            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[212px] sm:max-h-[232px]" style={{ aspectRatio: "1/1.65" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/1c534064664004f7db0d086c11a293e2d7e65a07%20(1).jpg?updatedAt=1779444093113"
                 alt="Local safari guide"
@@ -71,7 +71,7 @@ export function OnboardingScreen2({
             </div>
 
             {/* Right Bottom */}
-            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[140px] sm:max-h-[155px]" style={{ aspectRatio: "1/1.04" }}>
+            <div className="relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[191px] sm:max-h-[212px]" style={{ aspectRatio: "1/1.43" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/01a653844eb9f5e6476eae7031681e355179aea1.jpg?updatedAt=1779444068245"
                 alt="Authentic landscapes"

@@ -27,13 +27,13 @@ export function OnboardingScreen1({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1">
+      <div className="flex-1 min-h-0 flex flex-col justify-start px-4 pt-0.5 pb-1 overflow-y-auto no-scrollbar">
         {/* 2-Row Staggered Image Grid with Responsive Sizing */}
         <div className="flex flex-col gap-2 shrink-0">
           {/* Top Row: Left (Wide) + Right (Narrow) */}
           <div className="flex gap-2 items-start">
             {/* Top-Left */}
-            <div className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs shrink-0 max-h-[145px] sm:max-h-[160px]" style={{ aspectRatio: "4/2.9" }}>
+            <div className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs shrink-0 max-h-[198px] sm:max-h-[219px]" style={{ aspectRatio: "4/3.97" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/17db038150e7d0aa34234fa26833774a1c330deb.jpg?updatedAt=1779444092572"
                 alt="African landscape exploration"
@@ -45,7 +45,7 @@ export function OnboardingScreen1({
             </div>
 
             {/* Top-Right */}
-            <div className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[155px] sm:max-h-[170px]" style={{ aspectRatio: "1/1.2" }}>
+            <div className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[212px] sm:max-h-[232px]" style={{ aspectRatio: "1/1.65" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/65dac0d12eb46cc382ec4f687a25556b76239ad8.jpg?updatedAt=1779444110433"
                 alt="African wildlife portrait"
@@ -60,7 +60,7 @@ export function OnboardingScreen1({
           {/* Bottom Row: flex-reverse — Right (Wide) + Left (Narrow) */}
           <div className="flex flex-row-reverse gap-2 items-start">
             {/* Bottom-Right */}
-            <div className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs shrink-0 max-h-[145px] sm:max-h-[160px]" style={{ aspectRatio: "4/2.9" }}>
+            <div className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs shrink-0 max-h-[198px] sm:max-h-[219px]" style={{ aspectRatio: "4/3.97" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/d42d3fedcf8a05889bbab96a4bb5d920513661d5.jpg?updatedAt=1779444082986"
                 alt="African safari elephants"
@@ -71,7 +71,7 @@ export function OnboardingScreen1({
             </div>
 
             {/* Bottom-Left */}
-            <div className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[155px] sm:max-h-[170px]" style={{ aspectRatio: "1/1.2" }}>
+            <div className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shadow-xs max-h-[212px] sm:max-h-[232px]" style={{ aspectRatio: "1/1.65" }}>
               <Image
                 src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/1d40521aebf4d6eee578919774fc6fab93ff6c4e.jpg?updatedAt=1779444109272"
                 alt="Wildlife on savanna"

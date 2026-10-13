@@ -22,12 +22,15 @@ export function StartAdventureScreen({
         <AfriGuideLogoBadge size="normal" />
       </div>
 
-      {/* ── 4-Image Staggered Collage ── */}
-      <div className="flex flex-col gap-2 w-full my-auto shrink min-h-0">
+      {/* ── 4-Image Staggered Collage (+35% height) ── */}
+      <div className="flex flex-col gap-2 w-full my-auto shrink min-h-0 overflow-y-auto no-scrollbar">
         {/* Top Row: Left (Wide) + Right (Narrow) */}
         <div className="flex flex-row gap-2 items-start">
           {/* Top-Left */}
-          <div className="w-[58%] relative aspect-[4/2.8] max-h-[130px] rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shrink-0 shadow-xs">
+          <div
+            className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shrink-0 shadow-xs max-h-[176px] sm:max-h-[195px]"
+            style={{ aspectRatio: "4/3.78" }}
+          >
             <Image
               src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/6feb6e99f28c92cf4551d12f03635f8604794c28.jpg?updatedAt=1779444090488"
               alt="African landscape exploration"
@@ -39,7 +42,10 @@ export function StartAdventureScreen({
           </div>
 
           {/* Top-Right */}
-          <div className="flex-1 relative aspect-[1/1.18] max-h-[140px] rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 min-w-0 shadow-xs">
+          <div
+            className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 min-w-0 shadow-xs max-h-[189px] sm:max-h-[208px]"
+            style={{ aspectRatio: "1/1.59" }}
+          >
             <Image
               src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/53f0a641a7c3bc655317df8482a3119cfbd9850c.jpg?updatedAt=1779444104691"
               alt="African sunset and nature"
@@ -54,7 +60,10 @@ export function StartAdventureScreen({
         {/* Bottom Row: flex-reverse — Right (Wide) + Left (Narrow) */}
         <div className="flex flex-row-reverse gap-2 items-start">
           {/* Bottom-Right */}
-          <div className="w-[58%] relative aspect-[4/2.8] max-h-[130px] rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shrink-0 shadow-xs">
+          <div
+            className="w-[58%] relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 shrink-0 shadow-xs max-h-[176px] sm:max-h-[195px]"
+            style={{ aspectRatio: "4/3.78" }}
+          >
             <Image
               src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/65dac0d12eb46cc382ec4f687a25556b76239ad8.jpg?updatedAt=1779444110433"
               alt="Wildlife encounter"
@@ -65,7 +74,10 @@ export function StartAdventureScreen({
           </div>
 
           {/* Bottom-Left */}
-          <div className="flex-1 relative aspect-[1/1.18] max-h-[140px] rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 min-w-0 shadow-xs">
+          <div
+            className="flex-1 relative rounded-[18px] sm:rounded-[22px] overflow-hidden bg-stone-100 min-w-0 shadow-xs max-h-[189px] sm:max-h-[208px]"
+            style={{ aspectRatio: "1/1.59" }}
+          >
             <Image
               src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/9d9f4a7183e631aae25942805b8504df7b044b7a.jpg?updatedAt=1779444059036"
               alt="African safari nature"

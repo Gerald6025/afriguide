@@ -21,12 +21,16 @@ import { BookExperienceScreen, BookingDetails } from "./screens/BookExperienceSc
 import { PaymentScreen } from "./screens/PaymentScreen";
 import { BookingDetailsScreen } from "./screens/BookingDetailsScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { GuideDashboardScreen } from "./screens/GuideDashboardScreen";
 import {
   signUpUser,
   signInUser,
   sendEmailOtp,
   verifyEmailOtp,
   resendEmailOtp,
+  processProfileSession,
+  isProfileSessionReady,
+  getUserRole,
 } from "@/services/authService";
 
 // Screen Flow:
@@ -43,10 +47,17 @@ import {
 // Screen 11: "Lets get started" (Email confirmation screen)
 // Screen 12: "Enter confirmation code" (OTP verification screen)
 // Screen 13: "Explore Zimbabwe" (Tourist Home Screen)
+// Screen 21: Guide Dashboard Screen (Earnings, Stats, Bookings, New tour)
 
 export function InteractiveApp() {
   const [currentScreen, setCurrentScreen] = useState<number>(1);
-  const [confirmedRole, setConfirmedRole] = useState<"tourist" | "guide">("tourist");
+  const [confirmedRole, setConfirmedRole] = useState<"tourist" | "guide">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("afriguide_user_role");
+      if (stored === "guide" || stored === "tourist") return stored;
+    }
+    return "tourist";
+  });
   const [userFullName, setUserFullName] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("afriguide_user_name");
@@ -73,10 +84,16 @@ export function InteractiveApp() {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("afriguide_user_avatar");
       if (stored) return stored;
+      const role = localStorage.getItem("afriguide_user_role");
+      if (role === "guide") return "/images/desire_avatar.jpg";
     }
     return "/images/user_avatar.png";
   });
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [profileProcessingStatus, setProfileProcessingStatus] = useState<
+    "verifying" | "processing" | "ready" | null
+  >(null);
   const [demoBookingDetails, setDemoBookingDetails] = useState<BookingDetails | null>(null);
   const [demoPaymentInfo, setDemoPaymentInfo] = useState<PaymentInfo | null>(null);
 
@@ -192,6 +209,13 @@ export function InteractiveApp() {
             onBack={() => setCurrentScreen(7)}
             onSelectRole={(role) => {
               setConfirmedRole(role);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_role", role);
+                if (role === "guide") {
+                  setUserAvatar("/images/desire_avatar.jpg");
+                  localStorage.setItem("afriguide_user_avatar", "/images/desire_avatar.jpg");
+                }
+              }
               setCurrentScreen(9);
             }}
           />
@@ -206,6 +230,18 @@ export function InteractiveApp() {
             onBack={() => setCurrentScreen(8)}
             onSignIn={() => setCurrentScreen(10)}
             onCreateAccount={async (data) => {
+              const selectedRole = data?.role || confirmedRole;
+              setConfirmedRole(selectedRole);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_role", selectedRole);
+                if (data?.email) {
+                  localStorage.setItem(`afriguide_user_role_${data.email.trim().toLowerCase()}`, selectedRole);
+                }
+                if (selectedRole === "guide") {
+                  setUserAvatar("/images/desire_avatar.jpg");
+                  localStorage.setItem("afriguide_user_avatar", "/images/desire_avatar.jpg");
+                }
+              }
               if (data?.name) {
                 setUserFullName(data.name);
                 if (typeof window !== "undefined") {
@@ -229,7 +265,7 @@ export function InteractiveApp() {
                   name: data.name,
                   email: data.email,
                   password: data.password || "AfriGuide123!",
-                  role: data.role || confirmedRole,
+                  role: selectedRole,
                 });
                 if (!res.success && res.error) {
                   console.info("Supabase note:", res.error);
@@ -251,11 +287,24 @@ export function InteractiveApp() {
         return (
           <SignInScreen
             initialEmail={registeredEmail}
-            onSignUp={() => setCurrentScreen(9)}
-            onBack={() => setCurrentScreen(9)}
+            errorMessage={signInError}
+            isLoading={authLoading}
+            onSignUp={() => {
+              setSignInError(null);
+              setCurrentScreen(9);
+            }}
+            onBack={() => {
+              setSignInError(null);
+              setCurrentScreen(9);
+            }}
+            onVerifyOtp={() => {
+              setSignInError(null);
+              setCurrentScreen(12);
+            }}
             onForgotPassword={() => alert("Password reset link sent to your email.")}
             onLogin={async (data) => {
               setAuthLoading(true);
+              setSignInError(null);
               try {
                 if (data.email) {
                   setRegisteredEmail(data.email);
@@ -263,7 +312,21 @@ export function InteractiveApp() {
                     localStorage.setItem("afriguide_user_email", data.email);
                   }
                 }
+
+                // Strictly ensure profile session is verified & processed before permitting login
+                if (!isProfileSessionReady(data.email)) {
+                  setSignInError(
+                    "Profile session not initialized. Please verify your OTP code to complete your profile setup before logging in."
+                  );
+                  return;
+                }
+
                 const res = await signInUser(data.email, data.password);
+                if (!res.success) {
+                  setSignInError(res.error || "Unable to sign in. Please verify your credentials.");
+                  return;
+                }
+
                 // Extract user metadata from Supabase
                 const userObj = (res as any)?.data?.user;
                 if (userObj?.user_metadata?.full_name) {
@@ -278,15 +341,21 @@ export function InteractiveApp() {
                     localStorage.setItem("afriguide_account_created", userObj.created_at);
                   }
                 }
-                if (res.success || (data.password && data.password.length >= 4)) {
-                  // Navigate to Tourist Home Screen!
-                  setCurrentScreen(13);
+
+                // Determine whether user signed up as guide or tourist
+                const resolvedRole = getUserRole(data.email) || confirmedRole;
+                setConfirmedRole(resolvedRole);
+
+                // If user is a guide, navigate to Guide Dashboard (Screen 21)!
+                if (resolvedRole === "guide") {
+                  setCurrentScreen(21);
                 } else {
-                  alert(res.error || "Unable to sign in. Please verify your credentials.");
+                  // Proceed to Tourist Home Screen
+                  setCurrentScreen(13);
                 }
               } catch (err: unknown) {
                 console.warn("Login exception:", err);
-                setCurrentScreen(13);
+                setSignInError("An unexpected error occurred during sign in. Please try again.");
               } finally {
                 setAuthLoading(false);
               }
@@ -324,6 +393,7 @@ export function InteractiveApp() {
           <OtpVerificationScreen
             email={registeredEmail}
             isLoading={authLoading}
+            processingStatus={profileProcessingStatus}
             codeLength={4}
             onBack={() => setCurrentScreen(11)}
             onResend={async () => {
@@ -337,14 +407,41 @@ export function InteractiveApp() {
             }}
             onVerified={async (code) => {
               setAuthLoading(true);
+              setProfileProcessingStatus("verifying");
               try {
                 const res = await verifyEmailOtp(registeredEmail, code);
-                if (res.success) {
-                  alert("Account verified successfully! Welcome to AfriGuide. Please sign in to continue.");
-                  setCurrentScreen(10);
-                } else {
+                if (!res.success) {
+                  setProfileProcessingStatus(null);
                   alert(res.error || "Invalid 4-digit code. Please try again.");
+                  return;
                 }
+
+                // Step 2: Transition to processing profile session
+                setProfileProcessingStatus("processing");
+                const sessionRes = await processProfileSession({
+                  email: registeredEmail,
+                  name: userFullName,
+                  role: confirmedRole,
+                  avatarUrl: userAvatar,
+                });
+
+                if (!sessionRes.success) {
+                  setProfileProcessingStatus(null);
+                  alert(sessionRes.error || "Profile session processing failed. Please try again.");
+                  return;
+                }
+
+                // Step 3: Session processing successfully finalized
+                setProfileProcessingStatus("ready");
+                await new Promise((r) => setTimeout(r, 900));
+                setProfileProcessingStatus(null);
+                setSignInError(null);
+                alert("Profile session processed and verified successfully! You can now sign in.");
+                setCurrentScreen(10);
+              } catch (err) {
+                console.warn("Verification exception:", err);
+                setProfileProcessingStatus(null);
+                alert("An error occurred during verification. Please try again.");
               } finally {
                 setAuthLoading(false);
               }
@@ -374,6 +471,7 @@ export function InteractiveApp() {
               }
             }}
             onLogout={() => setCurrentScreen(10)}
+            onNavigateGuideDashboard={() => setCurrentScreen(21)}
           />
         );
 
@@ -463,9 +561,21 @@ export function InteractiveApp() {
                 localStorage.setItem("afriguide_user_avatar", newAvatar);
               }
             }}
-            onBack={() => setCurrentScreen(13)}
+            onBack={() => (confirmedRole === "guide" ? setCurrentScreen(21) : setCurrentScreen(13))}
             onLogout={() => setCurrentScreen(10)}
-            onBecomeGuide={() => alert("Apply to become an AfriGuide certified guide!")}
+            onBecomeGuide={() => setCurrentScreen(21)}
+          />
+        );
+
+      case 21:
+        // Screen 21: Guide Dashboard Screen (Earnings, Stats, Bookings, New tour)
+        return (
+          <GuideDashboardScreen
+            guideName={userFullName || "Desire"}
+            guideEmail={registeredEmail}
+            avatarUrl={userAvatar || "/images/desire_avatar.jpg"}
+            onLogout={() => setCurrentScreen(10)}
+            onNavigateTourist={() => setCurrentScreen(13)}
           />
         );
 

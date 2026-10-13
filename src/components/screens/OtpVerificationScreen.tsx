@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { IosHomeIndicator } from "../IosStatusBar";
 import { AfriGuideLogoBadge } from "../AfriGuideLogo";
 
@@ -13,6 +13,7 @@ interface OtpVerificationScreenProps {
   onVerified?: (code: string) => void;
   onResend?: () => void;
   isLoading?: boolean;
+  processingStatus?: "verifying" | "processing" | "ready" | null;
 }
 
 export function OtpVerificationScreen({
@@ -23,6 +24,7 @@ export function OtpVerificationScreen({
   onVerified,
   onResend,
   isLoading = false,
+  processingStatus = null,
 }: OtpVerificationScreenProps) {
   const [code, setCode] = useState<string[]>(() => Array(codeLength).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -176,6 +178,37 @@ export function OtpVerificationScreen({
           </button>
         </form>
       </div>
+
+      {/* Processing Profile Session Overlay Modal */}
+      {processingStatus && (
+        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-5 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] p-6 max-w-[320px] w-full shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200 border border-stone-100">
+            {processingStatus === "ready" ? (
+              <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-3 text-emerald-600 animate-in zoom-in duration-200">
+                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-[#1E3F32]/10 flex items-center justify-center mb-3 text-[#1E3F32]">
+                <Loader2 className="w-7 h-7 animate-spin stroke-[2.5]" />
+              </div>
+            )}
+            <h3 className="text-[17px] font-bold text-black mb-1.5">
+              {processingStatus === "ready"
+                ? "Profile Session Ready!"
+                : processingStatus === "verifying"
+                ? "Verifying Code..."
+                : "Processing Profile Session..."}
+            </h3>
+            <p className="text-stone-600 text-[12.5px] leading-relaxed">
+              {processingStatus === "ready"
+                ? "Your user profile and authenticated session have been successfully established."
+                : processingStatus === "verifying"
+                ? "Confirming your 4-digit verification code..."
+                : "Synchronizing your profile and securing your session credentials..."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* iOS Home Indicator Bar */}
       <IosHomeIndicator theme="dark" />

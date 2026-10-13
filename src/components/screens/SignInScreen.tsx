@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
 import { IosHomeIndicator } from "../IosStatusBar";
 import { AfriGuideLogoBadge } from "../AfriGuideLogo";
 
@@ -10,7 +10,10 @@ interface SignInScreenProps {
   onBack?: () => void;
   onSignUp?: () => void;
   onForgotPassword?: () => void;
+  onVerifyOtp?: () => void;
   onLogin?: (data: { email: string; password: string }) => void;
+  errorMessage?: string | null;
+  isLoading?: boolean;
 }
 
 // Apple Brand Icon
@@ -64,7 +67,10 @@ export function SignInScreen({
   onBack,
   onSignUp,
   onForgotPassword,
+  onVerifyOtp,
   onLogin,
+  errorMessage = null,
+  isLoading = false,
 }: SignInScreenProps) {
   const [email, setEmail] = useState<string>(initialEmail);
   const [password, setPassword] = useState<string>("");
@@ -97,7 +103,7 @@ export function SignInScreen({
 
       <div className="w-full flex-1 flex flex-col justify-center max-w-[380px] mx-auto py-2">
         {/* Title & Subtitle */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h1 className="text-[32px] font-black text-black tracking-tight leading-[1.1] mb-2">
             Welcome back
           </h1>
@@ -105,6 +111,25 @@ export function SignInScreen({
             Sign In to continue your curated<br />African journey
           </p>
         </div>
+
+        {/* Profile Session Required Alert Banner */}
+        {errorMessage && (
+          <div className="w-full bg-amber-50 border border-amber-200/90 rounded-[16px] p-3.5 mb-4 flex items-start gap-2.5 animate-in fade-in duration-200">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-[13px] text-amber-900 leading-snug">
+              <p className="font-semibold">{errorMessage}</p>
+              {onVerifyOtp && errorMessage.includes("OTP") && (
+                <button
+                  type="button"
+                  onClick={onVerifyOtp}
+                  className="mt-1.5 text-[12.5px] font-bold text-[#1E3F32] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Verify OTP Code &rarr;
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Sign In Form */}
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">

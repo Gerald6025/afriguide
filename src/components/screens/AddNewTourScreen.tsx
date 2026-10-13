@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { IosStatusBar } from "../IosStatusBar";
+import { createTourInDb } from "@/services/dbService";
 
 interface AddNewTourScreenProps {
   onBack: () => void;
@@ -90,26 +91,40 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
     setIncludedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     setIsPublishing(true);
+    try {
+      await createTourInDb({
+        title: tourTitle,
+        category: "Safari & Wildlife",
+        description,
+        duration: duration || "Full day",
+        price_per_person: pricePerPerson,
+        max_group_size: maxGroupSize,
+        location: meetingPoint || "Victoria Falls, Zimbabwe",
+        image_url: selectedPhotos[0] || "/images/safari_guide_elephants.jpg",
+        guide_name: "Kristin Watson",
+        status: "active",
+      });
+    } catch (err) {
+      console.error("Error creating tour in Supabase:", err);
+    }
+    setIsPublishing(false);
+    setPublishSuccess(true);
     setTimeout(() => {
-      setIsPublishing(false);
-      setPublishSuccess(true);
-      setTimeout(() => {
-        onPublish({
-          title: tourTitle,
-          price: pricePerPerson,
-          duration,
-          description,
-          meetingPoint,
-          included: includedItems,
-          minGroup: minGroupSize,
-          maxGroup: maxGroupSize,
-          cancellation: cancellationPolicy,
-          photos: selectedPhotos,
-        });
-      }, 1200);
-    }, 800);
+      onPublish({
+        title: tourTitle,
+        price: pricePerPerson,
+        duration,
+        description,
+        meetingPoint,
+        included: includedItems,
+        minGroup: minGroupSize,
+        maxGroup: maxGroupSize,
+        cancellation: cancellationPolicy,
+        photos: selectedPhotos,
+      });
+    }, 1200);
   };
 
   return (

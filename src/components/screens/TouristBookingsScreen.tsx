@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { getBookingsFromDb } from "@/services/dbService";
 import {
   ArrowLeft,
   SlidersHorizontal,
@@ -132,11 +133,40 @@ export function TouristBookingsScreen({
   onMessageGuide,
   onViewDetails,
 }: TouristBookingsScreenProps) {
+  const [bookings, setBookings] = useState<TouristBookingItem[]>(DEFAULT_BOOKINGS);
   const [activeFilter, setActiveFilter] = useState<"Upcoming" | "Confirmed" | "Past">("Upcoming");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [sortBy, setSortBy] = useState<"date" | "price">("date");
 
-  const filteredBookings = DEFAULT_BOOKINGS.filter((item) => {
+  useEffect(() => {
+    async function loadBookings() {
+      try {
+        const dbBookings = await getBookingsFromDb();
+        if (dbBookings && dbBookings.length > 0) {
+          setBookings(
+            dbBookings.map((b) => ({
+              id: b.id,
+              title: b.tour_title,
+              status: (b.status === "Completed" ? "Completed" : b.status === "Confirmed" ? "Confirmed" : "Pending") as any,
+              location: b.location,
+              time: b.time_slot || "09:00am-17:00pm",
+              date: b.date,
+              guideName: b.guide_name,
+              guideAvatar: b.guide_avatar || "/images/user_avatar.png",
+              price: Number(b.total_price || b.price_per_person),
+              imageUrl: b.tour_image_url || "/images/safari_guide_elephants.jpg",
+              tabCategory: b.status === "Completed" ? "past" : "upcoming",
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load bookings from Supabase:", err);
+      }
+    }
+    loadBookings();
+  }, []);
+
+  const filteredBookings = bookings.filter((item) => {
     if (activeFilter === "Upcoming") {
       return item.tabCategory === "upcoming";
     }

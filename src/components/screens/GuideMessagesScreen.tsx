@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { sendMessageToDb, getMessagesFromDb } from "@/services/dbService";
 import {
   ArrowLeft,
   Search,
@@ -132,12 +133,13 @@ export function GuideMessagesScreen({
     setActiveChat(chat);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!typedMessage.trim() || !activeChat) return;
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const content = typedMessage.trim();
     const newMsg = {
       id: `msg_${Date.now()}`,
-      text: typedMessage.trim(),
+      text: content,
       sender: "me" as const,
       time: now,
     };
@@ -150,11 +152,22 @@ export function GuideMessagesScreen({
     // Update last message in thread
     setChats((prev) =>
       prev.map((c) =>
-        c.id === activeChat.id ? { ...c, lastMessage: typedMessage.trim(), time: now } : c
+        c.id === activeChat.id ? { ...c, lastMessage: content, time: now } : c
       )
     );
 
     setTypedMessage("");
+
+    try {
+      await sendMessageToDb({
+        sender_name: guideName,
+        sender_avatar: avatarUrl,
+        receiver_name: activeChat.name,
+        content,
+      });
+    } catch (err) {
+      console.error("Failed to send message to Supabase:", err);
+    }
   };
 
   return (

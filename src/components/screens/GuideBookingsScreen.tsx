@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { getBookingsFromDb, updateBookingStatusInDb } from "@/services/dbService";
 import {
   ArrowLeft,
   SlidersHorizontal,
@@ -118,6 +119,38 @@ export function GuideBookingsScreen({
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<GuideBookingItem | null>(null);
   const [chatTarget, setChatTarget] = useState<GuideBookingItem | null>(null);
   const [chatMessage, setChatMessage] = useState<string>("");
+
+  useEffect(() => {
+    async function loadBookings() {
+      try {
+        const dbBookings = await getBookingsFromDb();
+        if (dbBookings && dbBookings.length > 0) {
+          setBookings(
+            dbBookings.map((b) => ({
+              id: b.id,
+              travelerName: b.tourist_name,
+              avatar: "/images/user_avatar.png",
+              partySize: b.party_size || 1,
+              country: "International Guest",
+              countryFlag: "🌍",
+              status: (b.status === "Completed" ? "Completed" : b.status === "Confirmed" ? "Confirmed" : "Pending") as any,
+              tourCategory: "Tour Experience",
+              tourTitle: b.tour_title,
+              date: b.date,
+              timeSlot: b.time_slot || "09:00am-17:00pm",
+              location: b.location,
+              pricePerPerson: Number(b.price_per_person),
+              totalPayout: Number(b.total_price),
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load bookings from Supabase:", err);
+      }
+    }
+    loadBookings();
+  }, []);
+
   const [messagesList, setMessagesList] = useState<Record<string, Array<{ text: string; sender: "guide" | "traveler"; time: string }>>>({
     booking_1: [
       { text: "Hi Desire! We're excited for the Sunset Safari tour this Saturday.", sender: "traveler", time: "10:14 AM" },
@@ -149,13 +182,14 @@ export function GuideBookingsScreen({
     setChatMessage("");
   };
 
-  const handleConfirmPending = (id: string) => {
+  const handleConfirmPending = async (id: string) => {
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status: "Confirmed" } : b))
     );
     if (selectedBookingDetails && selectedBookingDetails.id === id) {
       setSelectedBookingDetails((prev) => (prev ? { ...prev, status: "Confirmed" } : null));
     }
+    await updateBookingStatusInDb(id, "Confirmed");
   };
 
   return (

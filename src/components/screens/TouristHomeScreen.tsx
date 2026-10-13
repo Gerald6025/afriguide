@@ -28,6 +28,7 @@ import { BookingDetailsScreen } from "./BookingDetailsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { GuideMessagesScreen } from "./GuideMessagesScreen";
 import { TouristBookingsScreen } from "./TouristBookingsScreen";
+import { createBookingInDb } from "@/services/dbService";
 
 interface Experience {
   id: string;
@@ -251,10 +252,28 @@ export function TouristHomeScreen({
       <PaymentScreen
         bookingDetails={paymentBookingDetails}
         onBack={() => setPaymentBookingDetails(null)}
-        onPayNow={(info) => {
+        onPayNow={async (info) => {
           setPaymentInfo(info);
           setBookingTour(paymentBookingDetails.tour);
           setBookingExperienceTour(null);
+          try {
+            await createBookingInDb({
+              tourist_name: currentUserName || "Traveler",
+              tourist_email: userEmail || undefined,
+              tour_title: paymentBookingDetails.tour.title,
+              location: paymentBookingDetails.tour.location,
+              tour_image_url: paymentBookingDetails.tour.imageUrl,
+              date: paymentBookingDetails.date,
+              time_slot: "09:00am-17:00pm",
+              party_size: paymentBookingDetails.peopleCount,
+              price_per_person: paymentBookingDetails.tour.pricePerPerson,
+              total_price: paymentBookingDetails.totalPrice,
+              status: "Confirmed",
+              guide_name: "Kristin Watson",
+            });
+          } catch (err) {
+            console.error("Failed to persist booking:", err);
+          }
         }}
       />
     );

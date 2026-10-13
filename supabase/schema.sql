@@ -1,127 +1,114 @@
+-- ================================================================
 -- AfriGuide Supabase Database Schema
--- Run this script in the Supabase SQL Editor: https://supabase.com/dashboard/project/_/sql
+-- Run this in your Supabase Project -> SQL Editor
+-- ================================================================
 
--- 1. Create Profiles table
+-- 1. Profiles Table (Tourists & Guides)
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT,
-  avatar_url TEXT,
   email TEXT,
-  role TEXT DEFAULT 'traveler' CHECK (role IN ('traveler', 'guide', 'admin')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Create Guides table
-CREATE TABLE IF NOT EXISTS public.guides (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  bio TEXT NOT NULL,
-  country TEXT NOT NULL DEFAULT 'Zimbabwe',
-  location TEXT NOT NULL,
-  avatar_url TEXT NOT NULL,
-  cover_image_url TEXT,
-  rating NUMERIC(3, 2) DEFAULT 5.00,
-  reviews_count INT DEFAULT 0,
-  years_experience INT DEFAULT 1,
-  languages TEXT[] DEFAULT ARRAY['English'],
-  specialties TEXT[] DEFAULT ARRAY['Wildlife Safaris'],
-  verified BOOLEAN DEFAULT TRUE,
   phone TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  role TEXT DEFAULT 'traveler' CHECK (role IN ('traveler', 'guide', 'admin')),
+  avatar_url TEXT DEFAULT '/images/user_avatar.png',
+  bio TEXT,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. Create Tours table
+-- 2. Tours Table (Created by Guides, Browsed by Tourists)
 CREATE TABLE IF NOT EXISTS public.tours (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  guide_id UUID REFERENCES public.guides(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  duration_hours INT NOT NULL DEFAULT 4,
-  price_usd NUMERIC(10, 2) NOT NULL,
-  max_group_size INT DEFAULT 8,
-  location TEXT NOT NULL,
-  image_url TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  category TEXT DEFAULT 'Safari & Wildlife',
+  description TEXT,
+  duration TEXT DEFAULT 'Full day (8 hours)',
+  price_per_person NUMERIC NOT NULL DEFAULT 85,
+  max_group_size INT DEFAULT 10,
+  location TEXT NOT NULL DEFAULT 'Victoria Falls, Zimbabwe',
+  image_url TEXT DEFAULT '/images/safari_guide_elephants.jpg',
+  guide_name TEXT DEFAULT 'Kristin Watson',
+  guide_avatar TEXT DEFAULT '/images/user_avatar.png',
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'draft', 'archived')),
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. Create Reviews table
-CREATE TABLE IF NOT EXISTS public.reviews (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  guide_id UUID REFERENCES public.guides(id) ON DELETE CASCADE,
-  user_name TEXT NOT NULL,
-  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
-  comment TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- 3. Bookings Table (Tourists booking tours with Guides)
+CREATE TABLE IF NOT EXISTS public.bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tourist_name TEXT NOT NULL DEFAULT 'Cody Fisher',
+  tourist_email TEXT,
+  tour_id UUID REFERENCES public.tours(id) ON DELETE SET NULL,
+  tour_title TEXT NOT NULL,
+  location TEXT NOT NULL DEFAULT 'Victoria Falls, Zimbabwe',
+  tour_image_url TEXT DEFAULT '/images/safari_guide_elephants.jpg',
+  date TEXT NOT NULL,
+  time_slot TEXT DEFAULT '09:00am-17:00pm',
+  party_size INT DEFAULT 1,
+  price_per_person NUMERIC NOT NULL DEFAULT 85,
+  total_price NUMERIC NOT NULL DEFAULT 85,
+  status TEXT DEFAULT 'Confirmed' CHECK (status IN ('Confirmed', 'Pending', 'Completed', 'Cancelled')),
+  guide_name TEXT DEFAULT 'Kristin Watson',
+  guide_avatar TEXT DEFAULT '/images/user_avatar.png',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. Messages Table (Chat between tourists and guides)
+CREATE TABLE IF NOT EXISTS public.messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_name TEXT NOT NULL,
+  sender_avatar TEXT DEFAULT '/images/user_avatar.png',
+  receiver_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.guides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tours ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Public read access policies
-CREATE POLICY "Public can view verified guides" 
-  ON public.guides FOR SELECT 
-  USING (verified = TRUE);
+-- Allow public read/write access for our MVP so both tourists & guides can interact seamlessly
+DROP POLICY IF EXISTS "Public profiles access" ON public.profiles;
+CREATE POLICY "Public profiles access" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Public can view tours" 
-  ON public.tours FOR SELECT 
-  USING (TRUE);
+DROP POLICY IF EXISTS "Public tours access" ON public.tours;
+CREATE POLICY "Public tours access" ON public.tours FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Public can view reviews" 
-  ON public.reviews FOR SELECT 
-  USING (TRUE);
+DROP POLICY IF EXISTS "Public bookings access" ON public.bookings;
+CREATE POLICY "Public bookings access" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Users can view own profile" 
-  ON public.profiles FOR SELECT 
-  USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Public messages access" ON public.messages;
+CREATE POLICY "Public messages access" ON public.messages FOR ALL USING (true) WITH CHECK (true);
 
--- Sample Seed Data for Zimbabwe Guides
-INSERT INTO public.guides (name, bio, country, location, avatar_url, cover_image_url, rating, reviews_count, years_experience, languages, specialties, verified, phone)
+-- Enable Realtime for messages, bookings, and tours
+ALTER PUBLICATION supabase_realtime ADD TABLE public.tours;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+
+-- ================================================================
+-- Initial Seed Data
+-- ================================================================
+
+-- Seed Initial Tours
+INSERT INTO public.tours (title, category, description, duration, price_per_person, max_group_size, location, image_url, guide_name, status)
 VALUES 
-(
-  'Tendai Moyo',
-  'Certified Safari Guide with 12+ years of experience across Victoria Falls, Zambezi National Park, and Mana Pools. Specialist in Big 5 tracking and photographic safaris.',
-  'Zimbabwe',
-  'Victoria Falls, Zimbabwe',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80',
-  4.95,
-  142,
-  12,
-  ARRAY['English', 'Shona', 'Ndebele'],
-  ARRAY['Big 5 Walking Safaris', 'Victoria Falls Rainforest', 'Birdwatching'],
-  TRUE,
-  '+263 77 123 4567'
-),
-(
-  'Farai Chitepo',
-  'Hwange National Park native tracker and cultural storyteller. Specialist in elephant behavior, predator tracking, and nocturnal game drives.',
-  'Zimbabwe',
-  'Hwange, Zimbabwe',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=800&q=80',
-  5.00,
-  98,
-  15,
-  ARRAY['English', 'Ndebele', 'Tonga'],
-  ARRAY['Hwange Wildlife Drives', 'Bush Tracking', 'Star Gazing'],
-  TRUE,
-  '+263 71 987 6543'
-),
-(
-  'Blessing Ndlovu',
-  'Historian and wilderness explorer specializing in Great Zimbabwe ruins, Matobo Hills granite formations, and ancient San rock art.',
-  'Zimbabwe',
-  'Bulawayo & Matobo, Zimbabwe',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
-  4.90,
-  76,
-  9,
-  ARRAY['English', 'Ndebele'],
-  ARRAY['Matobo Rhino Tracking', 'San Rock Art', 'Great Zimbabwe'],
-  TRUE,
-  '+263 78 456 7890'
-);
+  ('Sunset Safari Guide', 'Safari & Wildlife', 'Experience breathtaking views of Victoria Falls and surrounding wildlife during the golden sunset hour.', 'Full day (8h)', 182, 8, 'Victoria Falls, Zimbabwe', '/images/safari_guide_elephants.jpg', 'Kristin Watson', 'active'),
+  ('Hwange Elephant Walk', 'Walking Safari', 'Guided walking tour through Hwange tracking magnificent elephant herds safely with licensed professional rangers.', 'Full day (8h)', 182, 6, 'Hwange National Park', '/images/experience_elephant.jpg', 'Kristin Watson', 'active'),
+  ('Victoria Falls Safari Tour', 'Game Drive', 'Full safari game drive exploring lions, giraffes, zebras, and natural habitats with expert trackers.', 'Half day (4h)', 120, 10, 'Victoria Falls, Zimbabwe', '/images/zebras_safari.jpg', 'Desire Sibanda', 'active'),
+  ('Zambezi River Sunset Cruise', 'Boat Cruise', 'Relaxing boat cruise along the mighty Zambezi river with hippos, crocodiles, and sunset drinks.', '3 hours', 95, 12, 'Livingstone, Zambia', '/images/camel_desert_sunset.jpg', 'Kristin Watson', 'active');
+
+-- Seed Initial Bookings
+INSERT INTO public.bookings (tourist_name, tour_title, location, tour_image_url, date, time_slot, party_size, price_per_person, total_price, status, guide_name)
+VALUES
+  ('Cody Fisher', 'Sunset Safari Guide', 'Victoria Falls, Zimbabwe', '/images/safari_guide_elephants.jpg', 'Oct 22, 2026', '09:00am-17:00pm', 1, 182, 182, 'Confirmed', 'Kristin Watson'),
+  ('Annette Black', 'Hwange Elephant Walk', 'Victoria Falls, Zimbabwe', '/images/experience_elephant.jpg', 'Oct 22, 2026', '09:00am-17:00pm', 1, 182, 182, 'Pending', 'Kristin Watson'),
+  ('Guy Hawkins', 'Sunset Safari Guide', 'Victoria Falls, Zimbabwe', '/images/experience_elephant.jpg', 'Oct 22, 2026', '09:00am-17:00pm', 1, 182, 182, 'Pending', 'Kristin Watson');
+
+-- Seed Initial Chat Messages
+INSERT INTO public.messages (sender_name, sender_avatar, receiver_name, content, is_read)
+VALUES
+  ('Dianne Russell', '/images/user_avatar.png', 'Kristin Watson', 'Hey man thanks again for the tour it was super amazing will be sure to leave a review!', false),
+  ('Eleanor Pena', '/images/user_avatar.png', 'Kristin Watson', 'What time should we meet at the park entrance tomorrow?', false),
+  ('Marvin McKinney', '/images/user_avatar.png', 'Kristin Watson', 'Can we bring our own camera equipment on the walking safari?', false);

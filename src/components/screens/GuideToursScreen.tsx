@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { getToursFromDb } from "@/services/dbService";
 import {
   ArrowLeft,
   Award,
@@ -90,6 +91,29 @@ export function GuideToursScreen({
   const [filter, setFilter] = useState<"all" | "active" | "drafts">("all");
   const [editingTour, setEditingTour] = useState<TourItem | null>(null);
   const [showNewTourModal, setShowNewTourModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    async function loadTours() {
+      try {
+        const dbTours = await getToursFromDb();
+        if (dbTours && dbTours.length > 0) {
+          setTours(
+            dbTours.map((t) => ({
+              id: t.id,
+              title: t.title,
+              pricePerPerson: Number(t.price_per_person),
+              duration: t.duration || "4 hours",
+              status: t.status === "active" ? "Active" : "Draft",
+              image: t.image_url || "/images/safari_guide_elephants.jpg",
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load tours from Supabase:", err);
+      }
+    }
+    loadTours();
+  }, []);
 
   const [newTitle, setNewTitle] = useState("");
   const [newPrice, setNewPrice] = useState("230");

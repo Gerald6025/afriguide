@@ -654,17 +654,6 @@ export function GuideDashboardScreen({
         </div>
       </div>
 
-      {/* Floating "+ New tour" Button */}
-      <div className="absolute right-5 bottom-[88px] z-20">
-        <button
-          type="button"
-          onClick={() => setShowNewTourModal(true)}
-          className="bg-white border border-stone-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.12)] rounded-full px-4 py-2.5 flex items-center gap-2 text-[13.5px] font-bold text-black hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
-        >
-          <PlusCircle className="w-[18px] h-[18px] stroke-[2]" />
-          <span>New tour</span>
-        </button>
-      </div>
 
       {/* Floating Bottom Navigation Bar (exact mockup match) */}
       <div className="absolute bottom-5 left-4 right-4 z-30 bg-white/95 backdrop-blur-md rounded-[32px] py-2 px-3 shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-stone-200/70 flex items-center justify-between">

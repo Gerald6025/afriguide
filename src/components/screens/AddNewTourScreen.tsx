@@ -45,6 +45,7 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
   const [tourTitle, setTourTitle] = useState("");
   const [category, setCategory] = useState("Nature and Adventure");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [duration, setDuration] = useState("4 hours");
   const [locationCity, setLocationCity] = useState("Victoria Falls, Zimbabwe");
 
   // Step 2: Tour Details

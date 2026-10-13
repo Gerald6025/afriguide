@@ -79,8 +79,8 @@ export function TourPreviewScreen({
 
   return (
     <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-x-hidden overflow-y-auto pb-28 select-none">
-      {/* ── Top Header with Back Arrow and Centered Title (No Status Bar) ── */}
-      <div className="w-full bg-white px-5 pt-4 pb-2.5 shrink-0 z-20">
+      {/* ── Sticky Top Header with Back Arrow and Centered Title ── */}
+      <div className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-md px-5 pt-4 pb-2.5 border-b border-stone-100/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] shrink-0">
         <div className="relative flex items-center justify-between">
           <button
             type="button"

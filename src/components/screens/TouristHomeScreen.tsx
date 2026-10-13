@@ -27,6 +27,7 @@ import { PaymentScreen } from "./PaymentScreen";
 import { BookingDetailsScreen } from "./BookingDetailsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { GuideMessagesScreen } from "./GuideMessagesScreen";
+import { TouristBookingsScreen } from "./TouristBookingsScreen";
 
 interface Experience {
   id: string;
@@ -298,6 +299,82 @@ export function TouristHomeScreen({
           })
         }
       />
+    );
+  }
+
+  if (activeTab === "calendar") {
+    return (
+      <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-hidden select-none">
+        <TouristBookingsScreen
+          onBack={() => setActiveTab("explore")}
+          onMessageGuide={() => setActiveTab("messages")}
+          onViewDetails={(booking) => {
+            setSelectedTour({
+              id: booking.id,
+              title: booking.title,
+              location: booking.location,
+              rating: 4.9,
+              pricePerPerson: booking.price,
+              imageUrl: booking.imageUrl,
+              groupSize: "2-10 people",
+            });
+          }}
+        />
+
+        {/* ── Fixed Bottom Navigation Bar (Floating Dock) ── */}
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-[390px] bg-white/95 backdrop-blur-md border border-stone-200/90 shadow-2xl rounded-full py-2 px-3 flex items-center justify-between z-40">
+          <button
+            type="button"
+            onClick={() => setActiveTab("explore")}
+            aria-label="Explore"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
+          >
+            <Compass className="w-5 h-5 stroke-[2.2]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("search")}
+            aria-label="Search"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
+          >
+            <Search className="w-5 h-5 stroke-[2.2]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("calendar")}
+            aria-label="Bookings"
+            className="rounded-full py-2 px-4 flex items-center gap-2 transition-all cursor-pointer bg-[#E6EEEA] text-[#1E3F32]"
+          >
+            <Calendar className="w-5 h-5 stroke-[2.4]" />
+            <span className="text-[13.5px] font-bold tracking-tight">Bookings</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("messages")}
+            aria-label="Messages"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
+          >
+            <MessageCircle className="w-5 h-5 stroke-[2.2]" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("profile")}
+            aria-label="Profile"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
+          >
+            <UserIcon className="w-5 h-5 stroke-[2.2]" />
+          </button>
+        </div>
+
+        {/* iOS Home Indicator */}
+        <div className="fixed bottom-0 left-0 right-0 pointer-events-none z-50">
+          <IosHomeIndicator theme="dark" />
+        </div>
+      </div>
     );
   }
 
@@ -750,9 +827,7 @@ export function TouristHomeScreen({
           type="button"
           onClick={() => setActiveTab("calendar")}
           aria-label="Bookings"
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-            activeTab === "calendar" ? "text-[#1E3F32]" : "text-stone-500 hover:text-black"
-          }`}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
         >
           <Calendar className="w-5 h-5 stroke-[2.2]" />
         </button>

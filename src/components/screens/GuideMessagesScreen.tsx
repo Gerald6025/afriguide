@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { sendMessageToDb, getMessagesFromDb } from "@/services/dbService";
+import {
+  sendMessageToDb,
+  getMessagesFromDb,
+  subscribeToRealtimeMessages,
+  DbMessage,
+} from "@/services/dbService";
 import {
   ArrowLeft,
   Search,
@@ -28,67 +33,40 @@ export interface ChatThread {
 
 const DEFAULT_CHATS: ChatThread[] = [
   {
-    id: "chat_1",
+    id: "chat_dianne_russell",
     name: "Dianne Russell",
     avatar: "/images/user_avatar.png",
     lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
     time: "11:00",
-    unreadCount: 1,
+    unreadCount: 0,
     online: true,
   },
   {
-    id: "chat_2",
+    id: "chat_eleanor_pena",
     name: "Eleanor Pena",
     avatar: "/images/user_avatar.png",
     lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
     time: "11:00",
+    unreadCount: 0,
+    online: true,
+  },
+  {
+    id: "chat_kristin_watson",
+    name: "Kristin Watson",
+    avatar: "/images/user_avatar.png",
+    lastMessage: "Welcome to Zimbabwe! Excited to guide your upcoming adventure.",
+    time: "10:30",
     unreadCount: 1,
     online: true,
   },
   {
-    id: "chat_3",
-    name: "Marvin McKinney",
-    avatar: "/images/user_avatar.png",
-    lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
-    time: "11:00",
-    unreadCount: 1,
-    online: false,
-  },
-  {
-    id: "chat_4",
-    name: "Theresa Webb",
-    avatar: "/images/user_avatar.png",
-    lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
-    time: "11:00",
+    id: "chat_desire_sibanda",
+    name: "Desire Sibanda",
+    avatar: "/images/desire_avatar.jpg",
+    lastMessage: "Looking forward to showing you the Victoria Falls and safari wildlife!",
+    time: "09:45",
     unreadCount: 1,
     online: true,
-  },
-  {
-    id: "chat_5",
-    name: "Brooklyn Simmons",
-    avatar: "/images/user_avatar.png",
-    lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
-    time: "11:00",
-    unreadCount: 1,
-    online: false,
-  },
-  {
-    id: "chat_6",
-    name: "Cameron Williamson",
-    avatar: "/images/user_avatar.png",
-    lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
-    time: "11:00",
-    unreadCount: 1,
-    online: true,
-  },
-  {
-    id: "chat_7",
-    name: "Leslie Alexander",
-    avatar: "/images/user_avatar.png",
-    lastMessage: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....",
-    time: "11:00",
-    unreadCount: 1,
-    online: false,
   },
 ];
 
@@ -96,12 +74,14 @@ interface GuideMessagesScreenProps {
   onBack: () => void;
   avatarUrl?: string;
   guideName?: string;
+  initialChatWith?: string;
 }
 
 export function GuideMessagesScreen({
   onBack,
   avatarUrl = "/images/desire_avatar.jpg",
   guideName = "Desire",
+  initialChatWith,
 }: GuideMessagesScreenProps) {
   const [chats, setChats] = useState<ChatThread[]>(DEFAULT_CHATS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,16 +90,165 @@ export function GuideMessagesScreen({
   const [chatMessages, setChatMessages] = useState<
     Record<string, Array<{ id: string; text: string; sender: "me" | "them"; time: string }>>
   >({
-    chat_1: [
-      { id: "1", text: "Hi Desire! We loved the Victoria Falls sunset walking tour.", sender: "them", time: "10:55" },
-      { id: "2", text: "Thank you Dianne! It was an absolute pleasure hosting your group.", sender: "me", time: "10:58" },
-      { id: "3", text: "Hey man thanks again for the tour it was super amazing will be sure to leave a review!", sender: "them", time: "11:00" },
+    chat_dianne_russell: [
+      { id: "1", text: "Hi! We loved the Victoria Falls sunset walking tour.", sender: "them", time: "10:55" },
+      { id: "2", text: "It was an absolute pleasure hosting your group!", sender: "me", time: "10:58" },
+      { id: "3", text: "Hey thanks again for the tour it was super amazing!", sender: "them", time: "11:00" },
     ],
-    chat_2: [
-      { id: "1", text: "Hey Desire, thank you so much for guiding us today through the gorge!", sender: "them", time: "10:52" },
-      { id: "2", text: "Hey man thanks again for the tour it was super amazing will be sure to leave a.....", sender: "them", time: "11:00" },
+    chat_kristin_watson: [
+      { id: "1", text: "Hello! Welcome to Zimbabwe, ready for your safari?", sender: "them", time: "10:30" },
+    ],
+    chat_desire_sibanda: [
+      { id: "1", text: "Welcome! Feel free to ask any questions about pick-up and timing.", sender: "them", time: "09:45" },
     ],
   });
+
+  // Load message history from Supabase on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadInitialMessages() {
+      try {
+        const dbMsgs = await getMessagesFromDb();
+        if (!isMounted || !dbMsgs || dbMsgs.length === 0) return;
+
+        const messagesByChat: Record<
+          string,
+          Array<{ id: string; text: string; sender: "me" | "them"; time: string }>
+        > = {};
+        const threadsMap: Record<string, ChatThread> = {};
+
+        dbMsgs.forEach((m) => {
+          const isMe = m.sender_name.trim().toLowerCase() === guideName.trim().toLowerCase();
+          const counterpart = isMe ? m.receiver_name : m.sender_name;
+          const counterpartAvatar = isMe ? "/images/user_avatar.png" : (m.sender_avatar || "/images/user_avatar.png");
+          const chatId = `chat_${counterpart.trim().toLowerCase().replace(/\s+/g, "_")}`;
+          const msgTime = new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+          if (!messagesByChat[chatId]) {
+            messagesByChat[chatId] = [];
+          }
+          messagesByChat[chatId].push({
+            id: m.id,
+            text: m.content,
+            sender: isMe ? "me" : "them",
+            time: msgTime,
+          });
+
+          threadsMap[chatId] = {
+            id: chatId,
+            name: counterpart,
+            avatar: counterpartAvatar,
+            lastMessage: m.content,
+            time: msgTime,
+            unreadCount: isMe ? 0 : 0,
+            online: true,
+          };
+        });
+
+        const liveThreads = Object.values(threadsMap);
+        setChats((prev) => {
+          const merged = [
+            ...liveThreads,
+            ...prev.filter((c) => !liveThreads.some((lt) => lt.name.toLowerCase() === c.name.toLowerCase())),
+          ];
+          return merged;
+        });
+
+        setChatMessages((prev) => ({
+          ...prev,
+          ...messagesByChat,
+        }));
+      } catch (err) {
+        console.warn("Failed to load live messages:", err);
+      }
+    }
+
+    loadInitialMessages();
+
+    // Subscribe to Realtime messages from Supabase
+    const unsubscribe = subscribeToRealtimeMessages((newDbMsg) => {
+      const isMe = newDbMsg.sender_name.trim().toLowerCase() === guideName.trim().toLowerCase();
+      const counterpart = isMe ? newDbMsg.receiver_name : newDbMsg.sender_name;
+      const counterpartAvatar = isMe ? "/images/user_avatar.png" : (newDbMsg.sender_avatar || "/images/user_avatar.png");
+      const chatId = `chat_${counterpart.trim().toLowerCase().replace(/\s+/g, "_")}`;
+      const msgTime = new Date(newDbMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      const newMsgItem = {
+        id: newDbMsg.id,
+        text: newDbMsg.content,
+        sender: (isMe ? "me" : "them") as "me" | "them",
+        time: msgTime,
+      };
+
+      setChatMessages((prev) => {
+        const existing = prev[chatId] || [];
+        if (existing.some((m) => m.id === newDbMsg.id)) return prev;
+        return {
+          ...prev,
+          [chatId]: [...existing, newMsgItem],
+        };
+      });
+
+      setChats((prev) => {
+        const exists = prev.some((c) => c.id === chatId);
+        if (exists) {
+          return prev.map((c) =>
+            c.id === chatId
+              ? {
+                  ...c,
+                  lastMessage: newDbMsg.content,
+                  time: msgTime,
+                  unreadCount: !isMe ? c.unreadCount + 1 : c.unreadCount,
+                }
+              : c
+          );
+        } else {
+          return [
+            {
+              id: chatId,
+              name: counterpart,
+              avatar: counterpartAvatar,
+              lastMessage: newDbMsg.content,
+              time: msgTime,
+              unreadCount: isMe ? 0 : 1,
+              online: true,
+            },
+            ...prev,
+          ];
+        }
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [guideName]);
+
+  // Open initialChatWith if requested
+  useEffect(() => {
+    if (initialChatWith && initialChatWith.trim()) {
+      const targetName = initialChatWith.trim();
+      const chatId = `chat_${targetName.toLowerCase().replace(/\s+/g, "_")}`;
+      const existing = chats.find((c) => c.name.toLowerCase() === targetName.toLowerCase());
+      if (existing) {
+        setActiveChat(existing);
+      } else {
+        const newThread: ChatThread = {
+          id: chatId,
+          name: targetName,
+          avatar: "/images/desire_avatar.jpg",
+          lastMessage: "Hello! Looking forward to guiding your tour.",
+          time: "Just now",
+          unreadCount: 0,
+          online: true,
+        };
+        setChats((prev) => [newThread, ...prev]);
+        setActiveChat(newThread);
+      }
+    }
+  }, [initialChatWith]);
 
   const filteredChats = chats.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -137,8 +266,9 @@ export function GuideMessagesScreen({
     if (!typedMessage.trim() || !activeChat) return;
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const content = typedMessage.trim();
+    const tempId = `msg_${Date.now()}`;
     const newMsg = {
-      id: `msg_${Date.now()}`,
+      id: tempId,
       text: content,
       sender: "me" as const,
       time: now,
@@ -159,12 +289,21 @@ export function GuideMessagesScreen({
     setTypedMessage("");
 
     try {
-      await sendMessageToDb({
+      const sent = await sendMessageToDb({
         sender_name: guideName,
         sender_avatar: avatarUrl,
         receiver_name: activeChat.name,
         content,
       });
+
+      if (sent) {
+        setChatMessages((prev) => ({
+          ...prev,
+          [activeChat.id]: (prev[activeChat.id] || []).map((m) =>
+            m.id === tempId ? { ...m, id: sent.id } : m
+          ),
+        }));
+      }
     } catch (err) {
       console.error("Failed to send message to Supabase:", err);
     }

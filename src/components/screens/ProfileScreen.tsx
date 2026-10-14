@@ -14,6 +14,9 @@ import {
   X,
 } from "lucide-react";
 import { IosStatusBar } from "../IosStatusBar";
+import { uploadImageToSupabase, compressImage, updateProfileAvatar, getProfileAvatar } from "@/services/dbService";
+import { Camera } from "lucide-react";
+
 
 export const DEFAULT_USER_AVATAR = "/images/user_avatar.png";
 
@@ -55,32 +58,101 @@ export function ProfileScreen({
   onUpdateAvatar,
 }: ProfileScreenProps) {
   const [currentAvatar, setCurrentAvatar] = useState<string>(() => {
-    if (propAvatarUrl && propAvatarUrl.trim()) return propAvatarUrl;
     if (typeof window !== "undefined") {
+      const emailSpecific = userEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${userEmail.trim().toLowerCase()}`)
+        : null;
+      if (emailSpecific && emailSpecific.trim()) return emailSpecific;
       const stored = localStorage.getItem("afriguide_user_avatar");
-      if (stored) return stored;
+      if (stored && stored.trim()) return stored;
+    }
+    if (propAvatarUrl && propAvatarUrl.trim() && propAvatarUrl !== DEFAULT_USER_AVATAR) {
+      return propAvatarUrl;
     }
     return DEFAULT_USER_AVATAR;
   });
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setCurrentAvatar(result);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("afriguide_user_avatar", result);
-          }
-          onUpdateAvatar?.(result);
-          showToast("Profile photo updated!");
+  // Sync avatar whenever prop or email changes, and fetch from server if needed
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const emailSpecific = userEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${userEmail.trim().toLowerCase()}`)
+        : null;
+      const stored = emailSpecific || localStorage.getItem("afriguide_user_avatar");
+      if (stored && stored.trim()) {
+        setCurrentAvatar(stored);
+        return;
+      }
+    }
+    if (propAvatarUrl && propAvatarUrl.trim() && propAvatarUrl !== DEFAULT_USER_AVATAR) {
+      setCurrentAvatar(propAvatarUrl);
+      return;
+    }
+
+    if (userEmail) {
+      getProfileAvatar(userEmail).then((avatar) => {
+        if (avatar && avatar.trim()) {
+          setCurrentAvatar(avatar);
         }
-      };
-      reader.readAsDataURL(file);
+      });
+    }
+  }, [propAvatarUrl, userEmail]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    showToast("Processing photo...");
+    try {
+      // 1. Compress image to clean, crisp 256x256 avatar (under ~30KB)
+      const compressed = await compressImage(file, 256, 256, 0.85);
+
+      // Create permanent base64 data URL fallback immediately
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(compressed);
+      });
+
+      // 2. Upload to Supabase Storage if configured
+      let finalAvatar = dataUrl;
+      try {
+        const uploadedUrl = await uploadImageToSupabase(compressed, "afriguide-media");
+        if (uploadedUrl && !uploadedUrl.startsWith("blob:")) {
+          finalAvatar = uploadedUrl;
+        }
+      } catch (uploadErr) {
+        console.warn("Storage upload notice (using permanent data URL):", uploadErr);
+      }
+
+      if (!finalAvatar) {
+        showToast("Unable to process photo. Please choose another.");
+        return;
+      }
+
+      // Update local state immediately for instant feedback
+      setCurrentAvatar(finalAvatar);
+
+      // 3. Persist to localStorage, Supabase profiles table, and auth metadata
+      if (userEmail) {
+        await updateProfileAvatar(userEmail, finalAvatar);
+      } else if (typeof window !== "undefined") {
+        localStorage.setItem("afriguide_user_avatar", finalAvatar);
+      }
+
+      // 4. Notify parent screen
+      onUpdateAvatar?.(finalAvatar);
+      showToast("Profile photo updated & saved!");
+    } catch (err) {
+      console.warn("Avatar upload error:", err);
+      showToast("Error updating photo.");
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -152,12 +224,19 @@ export function ProfileScreen({
         <div className="w-full bg-white rounded-[24px] p-5 border border-stone-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] flex flex-col items-center text-center mb-3.5">
           {/* Avatar with Edit Badge */}
           <div className="relative">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-sm bg-stone-100">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-sm bg-stone-100 cursor-pointer relative group"
+              title="Click to change profile picture"
+            >
               <img
                 src={currentAvatar}
                 alt={currentName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:opacity-85 transition-opacity"
               />
+              <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
             </div>
 
             {/* Edit pencil badge to change avatar */}

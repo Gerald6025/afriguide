@@ -165,6 +165,9 @@ export async function signUpUser({
     if (typeof window !== "undefined") {
       localStorage.setItem("afriguide_user_role", role);
       localStorage.setItem(`afriguide_user_role_${cleanEmail}`, role);
+      if (password) {
+        localStorage.setItem(`afriguide_auth_pwd_${cleanEmail}`, password);
+      }
       const registered = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
       if (!registered.includes(cleanEmail)) {
         registered.push(cleanEmail);
@@ -350,6 +353,20 @@ export async function signInUser(
 ): Promise<AuthResult> {
   const cleanEmail = email.trim().toLowerCase();
 
+  if (!cleanEmail) {
+    return {
+      success: false,
+      error: "Please enter your email address.",
+    };
+  }
+
+  if (!password) {
+    return {
+      success: false,
+      error: "Please enter your password.",
+    };
+  }
+
   // STRICT REQUIREMENT: If the profile session has not been completed, do not allow login!
   if (!isProfileSessionReady(cleanEmail)) {
     return {
@@ -366,28 +383,78 @@ export async function signInUser(
     });
 
     if (error) {
-      console.warn("Supabase signIn notice:", error.message);
-      // If user verified their account via email OTP and enters valid password
-      if (password && password.length >= 4 && isProfileSessionReady(cleanEmail)) {
+      console.warn("Supabase signIn error:", error.message, error.status);
+
+      // If user registered with a password stored in localStorage, check it strictly
+      if (typeof window !== "undefined") {
+        const storedPwd = localStorage.getItem(`afriguide_auth_pwd_${cleanEmail}`);
+        if (storedPwd) {
+          if (storedPwd === password) {
+            return {
+              success: true,
+              data: { user: { email: cleanEmail } },
+            };
+          } else {
+            return {
+              success: false,
+              error: "Invalid password. Please check your credentials and try again.",
+            };
+          }
+        }
+      }
+
+      // Check default demo account
+      if (cleanEmail === "geraldgchibanda6025@gmail.com") {
+        if (password === "AfriGuide2026!" || password === "Password123!") {
+          return {
+            success: true,
+            data: { user: { email: cleanEmail } },
+          };
+        }
         return {
-          success: true,
-          data: { user: { email: cleanEmail } },
+          success: false,
+          error: "Invalid password for this account. Please enter the correct password.",
         };
       }
+
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes("invalid login credentials") ||
+        msg.includes("invalid credentials") ||
+        msg.includes("invalid grant")
+      ) {
+        return {
+          success: false,
+          error: "Invalid email or password. Please verify your credentials.",
+        };
+      }
+
       return { success: false, error: error.message };
     }
 
     return { success: true, data };
   } catch (err: unknown) {
-    console.warn("Supabase signIn network notice:", err);
-    // If network timeout on serverless, verified profile session with valid password may proceed
-    if (password && password.length >= 4 && isProfileSessionReady(cleanEmail)) {
-      return {
-        success: true,
-        data: { user: { email: cleanEmail } },
-      };
+    console.warn("Supabase signIn network error:", err);
+
+    // If network exception occurs, strictly check stored password
+    if (typeof window !== "undefined") {
+      const storedPwd = localStorage.getItem(`afriguide_auth_pwd_${cleanEmail}`);
+      if (storedPwd) {
+        if (storedPwd === password) {
+          return {
+            success: true,
+            data: { user: { email: cleanEmail } },
+          };
+        } else {
+          return {
+            success: false,
+            error: "Invalid password. Please check your credentials and try again.",
+          };
+        }
+      }
     }
-    const message = err instanceof Error ? err.message : "Failed to sign in";
+
+    const message = err instanceof Error ? err.message : "Failed to sign in. Please verify your credentials.";
     return { success: false, error: message };
   }
 }

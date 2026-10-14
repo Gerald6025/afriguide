@@ -17,6 +17,7 @@ import {
   Landmark,
   Mountain,
   TreePine,
+  Camera,
 } from "lucide-react";
 import { IosHomeIndicator } from "../IosStatusBar";
 import { SearchScreen } from "./SearchScreen";
@@ -28,7 +29,14 @@ import { BookingDetailsScreen } from "./BookingDetailsScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { GuideMessagesScreen } from "./GuideMessagesScreen";
 import { TouristBookingsScreen } from "./TouristBookingsScreen";
-import { createBookingInDb } from "@/services/dbService";
+import {
+  createBookingInDb,
+  getToursFromDb,
+  updateProfileAvatar,
+  getProfileAvatar,
+  compressImage,
+  uploadImageToSupabase,
+} from "@/services/dbService";
 
 interface Experience {
   id: string;
@@ -146,13 +154,91 @@ export function TouristHomeScreen({
   onNavigateGuideDashboard,
 }: TouristHomeScreenProps) {
   const [currentUserAvatar, setCurrentUserAvatar] = useState<string>(() => {
-    if (propAvatarUrl && propAvatarUrl.trim()) return propAvatarUrl;
     if (typeof window !== "undefined") {
+      const emailSpecific = userEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${userEmail.trim().toLowerCase()}`)
+        : null;
+      if (emailSpecific && emailSpecific.trim()) return emailSpecific;
       const stored = localStorage.getItem("afriguide_user_avatar");
-      if (stored) return stored;
+      if (stored && stored.trim()) return stored;
+    }
+    if (propAvatarUrl && propAvatarUrl.trim() && propAvatarUrl !== "/images/user_avatar.png") {
+      return propAvatarUrl;
     }
     return "/images/user_avatar.png";
   });
+
+  const dashboardAvatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUpdatingAvatarDirect, setIsUpdatingAvatarDirect] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const emailSpecific = userEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${userEmail.trim().toLowerCase()}`)
+        : null;
+      const stored = emailSpecific || localStorage.getItem("afriguide_user_avatar");
+      if (stored && stored.trim()) {
+        setCurrentUserAvatar(stored);
+        return;
+      }
+    }
+    if (propAvatarUrl && propAvatarUrl.trim() && propAvatarUrl !== "/images/user_avatar.png") {
+      setCurrentUserAvatar(propAvatarUrl);
+      return;
+    }
+    if (userEmail) {
+      getProfileAvatar(userEmail).then((avatar) => {
+        if (avatar && avatar.trim()) {
+          setCurrentUserAvatar(avatar);
+        }
+      });
+    }
+  }, [propAvatarUrl, userEmail]);
+
+  const handleDirectAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUpdatingAvatarDirect(true);
+    try {
+      const compressed = await compressImage(file, 256, 256, 0.85);
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(compressed);
+      });
+
+      let finalAvatar = dataUrl;
+      try {
+        const uploadedUrl = await uploadImageToSupabase(compressed, "afriguide-media");
+        if (uploadedUrl && !uploadedUrl.startsWith("blob:")) {
+          finalAvatar = uploadedUrl;
+        }
+      } catch (uploadErr) {
+        console.warn("Storage upload notice (using data URL):", uploadErr);
+      }
+
+      if (!finalAvatar) return;
+
+      setCurrentUserAvatar(finalAvatar);
+
+      if (userEmail) {
+        await updateProfileAvatar(userEmail, finalAvatar);
+      } else if (typeof window !== "undefined") {
+        localStorage.setItem("afriguide_user_avatar", finalAvatar);
+      }
+
+      onUpdateAvatar?.(finalAvatar);
+    } catch (err) {
+      console.warn("Direct avatar upload error:", err);
+    } finally {
+      setIsUpdatingAvatarDirect(false);
+      if (dashboardAvatarInputRef.current) {
+        dashboardAvatarInputRef.current.value = "";
+      }
+    }
+  };
 
   const [currentUserName, setCurrentUserName] = useState<string>(() => {
     if (propUserName && propUserName.trim()) return propUserName;
@@ -172,13 +258,61 @@ export function TouristHomeScreen({
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [bookingTour, setBookingTour] = useState<TourPreviewData | null>(null);
   const [viewingBookingDetails, setViewingBookingDetails] = useState<boolean>(false);
+  const [chatTargetGuide, setChatTargetGuide] = useState<string | null>(null);
+
+  const [experiences, setExperiences] = useState<Experience[]>(EXPERIENCES);
+
+  React.useEffect(() => {
+    async function loadLiveTours() {
+      try {
+        const dbTours = await getToursFromDb();
+        if (dbTours && dbTours.length > 0) {
+          const liveList: Experience[] = dbTours.map((t) => {
+            const catLower = (t.category || "").toLowerCase();
+            const mappedCat = catLower.includes("safari")
+              ? "safari"
+              : catLower.includes("culture")
+              ? "culture"
+              : "nature";
+
+            return {
+              id: t.id,
+              guideName: t.guide_name || "Desire Sibanda",
+              rating: 4.9,
+              title: t.title,
+              pricePerPerson: Number(t.price_per_person) || 85,
+              location: t.location || "Victoria Falls, Zimbabwe",
+              imageUrl: t.image_url || "/images/safari_guide_elephants.jpg",
+              badge: "Verified Tour",
+              category: mappedCat,
+            };
+          });
+
+          // Prepend newly created tours from db, keeping default fallback experiences as well
+          const combined = [
+            ...liveList,
+            ...EXPERIENCES.filter(
+              (exp) =>
+                !liveList.some(
+                  (lt) => lt.title.toLowerCase() === exp.title.toLowerCase()
+                )
+            ),
+          ];
+          setExperiences(combined);
+        }
+      } catch (err) {
+        console.warn("Could not load live tours from Supabase:", err);
+      }
+    }
+    loadLiveTours();
+  }, []);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredExperiences = EXPERIENCES.filter((exp) => {
+  const filteredExperiences = experiences.filter((exp) => {
     const matchesCategory =
       selectedCategory === "all" ||
       (selectedCategory === "safari" && exp.category === "safari") ||
@@ -210,6 +344,8 @@ export function TouristHomeScreen({
           setActiveTab("explore");
         }}
         onMessageGuide={() => {
+          const guide = bookingTour?.guideName || selectedTour?.guideName || "Desire Sibanda";
+          setChatTargetGuide(guide);
           setViewingBookingDetails(false);
           setBookingTour(null);
           setPaymentBookingDetails(null);
@@ -268,8 +404,9 @@ export function TouristHomeScreen({
               party_size: paymentBookingDetails.peopleCount,
               price_per_person: paymentBookingDetails.tour.pricePerPerson,
               total_price: paymentBookingDetails.totalPrice,
-              status: "Confirmed",
-              guide_name: "Kristin Watson",
+              status: "Pending",
+              guide_name: paymentBookingDetails.tour.guideName || "Desire Sibanda",
+              guide_avatar: "/images/desire_avatar.jpg",
             });
           } catch (err) {
             console.error("Failed to persist booking:", err);
@@ -326,7 +463,10 @@ export function TouristHomeScreen({
       <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-hidden select-none">
         <TouristBookingsScreen
           onBack={() => setActiveTab("explore")}
-          onMessageGuide={() => setActiveTab("messages")}
+          onMessageGuide={(guideName) => {
+            setChatTargetGuide(guideName || "Desire Sibanda");
+            setActiveTab("messages");
+          }}
           onViewDetails={(booking) => {
             setSelectedTour({
               id: booking.id,
@@ -401,9 +541,13 @@ export function TouristHomeScreen({
     return (
       <div className="relative w-full h-full min-h-full bg-white flex flex-col justify-between overflow-hidden select-none">
         <GuideMessagesScreen
-          onBack={() => setActiveTab("explore")}
+          onBack={() => {
+            setChatTargetGuide(null);
+            setActiveTab("explore");
+          }}
           avatarUrl={currentUserAvatar}
           guideName={currentUserName}
+          initialChatWith={chatTargetGuide || undefined}
         />
 
         {/* ── Fixed Bottom Navigation Bar (Floating Dock) ── */}
@@ -509,19 +653,46 @@ export function TouristHomeScreen({
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-[#E8622A] rounded-full ring-2 ring-white" />
             </button>
 
-            {/* Profile Avatar */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("profile")}
-              className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-stone-200/80 hover:ring-[#1E3F32] transition-all cursor-pointer block shrink-0"
-              title={`Signed in as ${userEmail}`}
-            >
-              <img
-                src={currentUserAvatar}
-                alt={currentUserName || "User Avatar"}
-                className="w-full h-full object-cover"
+            {/* Profile Avatar with Direct Change support */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-stone-200/80 hover:ring-[#1E3F32] transition-all cursor-pointer block shrink-0 relative"
+                title={`Signed in as ${userEmail} — click to view profile`}
+              >
+                <img
+                  src={currentUserAvatar}
+                  alt={currentUserName || "User Avatar"}
+                  className="w-full h-full object-cover"
+                />
+                {isUpdatingAvatarDirect && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dashboardAvatarInputRef.current?.click();
+                }}
+                className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white border border-stone-200 shadow-xs flex items-center justify-center text-stone-700 hover:text-[#1E3F32] active:scale-90 transition-transform cursor-pointer"
+                title="Quick change avatar"
+              >
+                <Camera className="w-2.5 h-2.5 stroke-[2.4]" />
+              </button>
+
+              <input
+                ref={dashboardAvatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleDirectAvatarUpload}
               />
-            </button>
+            </div>
           </div>
         </div>
       </div>

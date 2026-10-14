@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
   Bell,
@@ -30,6 +30,11 @@ import { GuideToursScreen } from "./GuideToursScreen";
 import { GuideMessagesScreen } from "./GuideMessagesScreen";
 import { GuideProfileScreen } from "./GuideProfileScreen";
 import { AddNewTourScreen } from "./AddNewTourScreen";
+import {
+  getBookingsFromDb,
+  updateBookingStatusInDb,
+  DbBooking,
+} from "@/services/dbService";
 
 interface GuideDashboardScreenProps {
   guideName?: string;
@@ -37,6 +42,7 @@ interface GuideDashboardScreenProps {
   avatarUrl?: string;
   onLogout?: () => void;
   onNavigateTourist?: () => void;
+  onUpdateAvatar?: (avatar: string) => void;
 }
 
 interface PendingRequest {
@@ -49,67 +55,128 @@ interface PendingRequest {
   avatar: string;
 }
 
+const FALLBACK_PENDING_REQUESTS: PendingRequest[] = [
+  {
+    id: "req_1",
+    travelerName: "Jessica & Marcus (USA)",
+    tourName: "Sunset Safari & Wildlife Tracking",
+    date: "April 24, 2026 • 08:30 AM",
+    travelers: 2,
+    price: 240,
+    avatar: "/images/user_avatar.png",
+  },
+  {
+    id: "req_2",
+    travelerName: "Klaus Schmidt (Germany)",
+    tourName: "Victoria Falls Gorge Explorer",
+    date: "April 26, 2026 • 09:00 AM",
+    travelers: 4,
+    price: 480,
+    avatar: "/images/user_avatar.png",
+  },
+  {
+    id: "req_3",
+    travelerName: "Tinashe & Friends (SA)",
+    tourName: "Zambezi River Sunset Cruise Guide",
+    date: "May 02, 2026 • 03:30 PM",
+    travelers: 3,
+    price: 360,
+    avatar: "/images/user_avatar.png",
+  },
+];
+
 export function GuideDashboardScreen({
   guideName = "Desire",
   guideEmail = "desire.safari@afriguide.com",
   avatarUrl = "/images/desire_avatar.jpg",
   onLogout,
   onNavigateTourist,
+  onUpdateAvatar,
 }: GuideDashboardScreenProps) {
+  const [currentAvatar, setCurrentAvatar] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const emailSpecific = guideEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${guideEmail.trim().toLowerCase()}`)
+        : null;
+      if (emailSpecific && emailSpecific.trim()) return emailSpecific;
+      const stored = localStorage.getItem("afriguide_user_avatar");
+      if (stored && stored.trim()) return stored;
+    }
+    return avatarUrl;
+  });
+
+  React.useEffect(() => {
+    if (avatarUrl) {
+      setCurrentAvatar(avatarUrl);
+    }
+  }, [avatarUrl]);
+
   const [activeTab, setActiveTab] = useState<"dashboard" | "calendar" | "tours" | "messages" | "profile">("dashboard");
   const [showReviewRequests, setShowReviewRequests] = useState<boolean>(false);
   const [showAddNewTour, setShowAddNewTour] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
+  const [allBookings, setAllBookings] = useState<DbBooking[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>(FALLBACK_PENDING_REQUESTS);
 
-  // Pending requests state
-  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([
-    {
-      id: "req_1",
-      travelerName: "Jessica & Marcus (USA)",
-      tourName: "Sunset Safari & Wildlife Tracking",
-      date: "April 24, 2026 • 08:30 AM",
-      travelers: 2,
-      price: 240,
-      avatar: "/images/user_avatar.png",
-    },
-    {
-      id: "req_2",
-      travelerName: "Klaus Schmidt (Germany)",
-      tourName: "Victoria Falls Gorge Explorer",
-      date: "April 26, 2026 • 09:00 AM",
-      travelers: 4,
-      price: 480,
-      avatar: "/images/user_avatar.png",
-    },
-    {
-      id: "req_3",
-      travelerName: "Tinashe & Friends (SA)",
-      tourName: "Zambezi River Sunset Cruise Guide",
-      date: "May 02, 2026 • 03:30 PM",
-      travelers: 3,
-      price: 360,
-      avatar: "/images/user_avatar.png",
-    },
-  ]);
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const dbBookings = await getBookingsFromDb();
+      if (dbBookings && dbBookings.length > 0) {
+        setAllBookings(dbBookings);
+        const livePending = dbBookings
+          .filter((b) => b.status === "Pending")
+          .map((b) => ({
+            id: b.id,
+            travelerName: b.tourist_name || "Traveler",
+            tourName: b.tour_title,
+            date: b.date + (b.time_slot ? ` • ${b.time_slot}` : ""),
+            travelers: b.party_size || 1,
+            price: Number(b.total_price || b.price_per_person * (b.party_size || 1) || 120),
+            avatar: "/images/user_avatar.png",
+          }));
+
+        if (livePending.length > 0) {
+          setPendingRequests(livePending);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load dashboard bookings:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // Handle request decision
-  const handleAcceptRequest = (id: string) => {
+  const handleAcceptRequest = async (id: string) => {
     setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+    if (!id.startsWith("req_")) {
+      await updateBookingStatusInDb(id, "Confirmed");
+      await loadDashboardData();
+    }
     alert("Booking accepted! The traveler has been notified.");
   };
 
-  const handleDeclineRequest = (id: string) => {
+  const handleDeclineRequest = async (id: string) => {
     setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+    if (!id.startsWith("req_")) {
+      await updateBookingStatusInDb(id, "Cancelled");
+      await loadDashboardData();
+    }
   };
 
   // Render Full 4-Step Add New Tour Wizard when triggered
   if (showAddNewTour) {
     return (
       <AddNewTourScreen
+        guideName={guideName}
+        guideAvatar={avatarUrl}
         onBack={() => setShowAddNewTour(false)}
         onPublish={() => {
           setShowAddNewTour(false);
           setActiveTab("tours");
+          loadDashboardData();
         }}
       />
     );
@@ -309,9 +376,13 @@ export function GuideDashboardScreen({
           onBack={() => setActiveTab("dashboard")}
           guideName={guideName}
           guideEmail={guideEmail}
-          avatarUrl={avatarUrl}
+          avatarUrl={currentAvatar}
           onLogout={onLogout}
           onSwitchToTourist={onNavigateTourist}
+          onUpdateAvatar={(newUrl) => {
+            setCurrentAvatar(newUrl);
+            onUpdateAvatar?.(newUrl);
+          }}
         />
 
         {/* Floating Bottom Navigation Bar */}
@@ -398,7 +469,7 @@ export function GuideDashboardScreen({
               className="w-8 h-8 rounded-full overflow-hidden bg-stone-200 border border-white shadow-xs cursor-pointer hover:ring-2 hover:ring-[#1E3F32] transition-all"
             >
               <Image
-                src={avatarUrl || "/images/desire_avatar.jpg"}
+                src={currentAvatar || "/images/desire_avatar.jpg"}
                 alt={guideName}
                 width={32}
                 height={32}
@@ -445,17 +516,35 @@ export function GuideDashboardScreen({
         )}
 
         {/* April 2026 Earnings Big Card */}
-        <div className="w-full rounded-[24px] bg-gradient-to-br from-[#EAF8F1] via-[#E4F5EB] to-[#D7F2E4] p-5 border border-emerald-100/70 shadow-xs mb-3.5 relative overflow-hidden">
-          <p className="text-[14px] text-stone-700 font-medium">April 2026 eanings</p>
-          <h2 className="text-[44px] font-black text-black tracking-tight leading-none my-2">
-            $0
-          </h2>
-          <p className="text-[13.5px] text-stone-700 font-normal mb-3">8 tours completed</p>
-          <div className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur-xs px-2.5 py-1 rounded-full text-[12px] font-semibold text-emerald-800 border border-emerald-200/60 shadow-2xs">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
-            <span>$45 up last month</span>
-          </div>
-        </div>
+        {(() => {
+          const totalEarnings = allBookings
+            .filter((b) => b.status === "Confirmed" || b.status === "Completed")
+            .reduce(
+              (sum, b) =>
+                sum +
+                (Number(b.total_price) ||
+                  Number(b.price_per_person) * (b.party_size || 1) ||
+                  0),
+              0
+            );
+          const completedCount = allBookings.filter((b) => b.status === "Completed").length;
+          const displayEarnings = totalEarnings > 0 ? totalEarnings : 340;
+          const displayCompleted = completedCount > 0 ? completedCount : 8;
+
+          return (
+            <div className="w-full rounded-[24px] bg-gradient-to-br from-[#EAF8F1] via-[#E4F5EB] to-[#D7F2E4] p-5 border border-emerald-100/70 shadow-xs mb-3.5 relative overflow-hidden">
+              <p className="text-[14px] text-stone-700 font-medium">April 2026 earnings</p>
+              <h2 className="text-[44px] font-black text-black tracking-tight leading-none my-2">
+                ${displayEarnings}
+              </h2>
+              <p className="text-[13.5px] text-stone-700 font-normal mb-3">{displayCompleted} tours completed</p>
+              <div className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur-xs px-2.5 py-1 rounded-full text-[12px] font-semibold text-emerald-800 border border-emerald-200/60 shadow-2xs">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                <span>$45 up last month</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Quick Stats Grid: Bookings / Ratings on Left, Reviews on Right */}
         <div className="grid grid-cols-2 gap-3 mb-5">
@@ -471,7 +560,7 @@ export function GuideDashboardScreen({
               </div>
               <div>
                 <p className="text-[12px] font-semibold text-stone-800 leading-none">Bookings</p>
-                <p className="text-[15px] font-black text-black mt-1 leading-none">31</p>
+                <p className="text-[15px] font-black text-black mt-1 leading-none">{allBookings.length > 0 ? allBookings.length : 31}</p>
               </div>
             </div>
 

@@ -112,3 +112,14 @@ VALUES
   ('Dianne Russell', '/images/user_avatar.png', 'Kristin Watson', 'Hey man thanks again for the tour it was super amazing will be sure to leave a review!', false),
   ('Eleanor Pena', '/images/user_avatar.png', 'Kristin Watson', 'What time should we meet at the park entrance tomorrow?', false),
   ('Marvin McKinney', '/images/user_avatar.png', 'Kristin Watson', 'Can we bring our own camera equipment on the walking safari?', false);
+
+-- ================================================================
+-- 5. Supabase Storage: Public Media Bucket (Tours & Avatars)
+-- ================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('afriguide-media', 'afriguide-media', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Public media upload" ON storage.objects;
+CREATE POLICY "Public media upload" ON storage.objects FOR ALL USING (bucket_id = 'afriguide-media') WITH CHECK (bucket_id = 'afriguide-media');
+

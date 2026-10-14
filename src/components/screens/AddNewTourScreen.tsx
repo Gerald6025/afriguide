@@ -21,10 +21,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { IosStatusBar } from "../IosStatusBar";
-import { createTourInDb } from "@/services/dbService";
+import { createTourInDb, uploadImageToSupabase } from "@/services/dbService";
 
 interface AddNewTourScreenProps {
   onBack: () => void;
+  guideName?: string;
+  guideAvatar?: string;
   onPublish: (tour: {
     title: string;
     price: number;
@@ -39,7 +41,12 @@ interface AddNewTourScreenProps {
   }) => void;
 }
 
-export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
+export function AddNewTourScreen({
+  onBack,
+  guideName = "Desire Sibanda",
+  guideAvatar = "/images/desire_avatar.jpg",
+  onPublish,
+}: AddNewTourScreenProps) {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step 1: Basic Information
@@ -79,6 +86,31 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
   ]);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [publishSuccess, setPublishSuccess] = useState<boolean>(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState<boolean>(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingPhotos(true);
+    try {
+      const fileList = Array.from(files).slice(0, 10 - selectedPhotos.length);
+      for (const file of fileList) {
+        const uploadedUrl = await uploadImageToSupabase(file, "afriguide-media");
+        if (uploadedUrl) {
+          setSelectedPhotos((prev) => [...prev, uploadedUrl]);
+        }
+      }
+    } catch (err) {
+      console.warn("Upload photos error:", err);
+    } finally {
+      setIsUploadingPhotos(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const handleAddItem = () => {
     if (!newItemText.trim()) return;
@@ -95,15 +127,16 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
     setIsPublishing(true);
     try {
       await createTourInDb({
-        title: tourTitle,
-        category: "Safari & Wildlife",
+        title: tourTitle || "Custom Guided Tour",
+        category: category || "Safari & Wildlife",
         description,
-        duration: duration || "Full day",
+        duration: duration || "4 hours",
         price_per_person: pricePerPerson,
         max_group_size: maxGroupSize,
-        location: meetingPoint || "Victoria Falls, Zimbabwe",
+        location: locationCity || meetingPoint || "Victoria Falls, Zimbabwe",
         image_url: selectedPhotos[0] || "/images/safari_guide_elephants.jpg",
-        guide_name: "Kristin Watson",
+        guide_name: guideName,
+        guide_avatar: guideAvatar,
         status: "active",
       });
     } catch (err) {
@@ -113,7 +146,7 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
     setPublishSuccess(true);
     setTimeout(() => {
       onPublish({
-        title: tourTitle,
+        title: tourTitle || "Custom Guided Tour",
         price: pricePerPerson,
         duration,
         description,
@@ -693,30 +726,48 @@ export function AddNewTourScreen({ onBack, onPublish }: AddNewTourScreenProps) {
               </div>
             </div>
 
+            {/* Hidden File Input for Image Upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
             {/* Dashed Orange Upload Box */}
-            <div className="border-2 border-dashed border-[#F59E0B] rounded-2xl p-6 flex flex-col items-center justify-center bg-white text-center">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-[#F59E0B] rounded-2xl p-6 flex flex-col items-center justify-center bg-white text-center cursor-pointer hover:bg-amber-50/20 transition-colors"
+            >
               <Upload className="w-8 h-8 text-[#D97706] stroke-[2] mb-1" />
-              <span className="text-xs font-bold text-[#D97706]">Upload file</span>
-              <p className="text-xs text-stone-500 mt-1">Upload photos here</p>
+              <span className="text-xs font-bold text-[#D97706]">
+                {isUploadingPhotos ? "Uploading to Supabase..." : "Upload files"}
+              </span>
+              <p className="text-xs text-stone-500 mt-1">
+                {isUploadingPhotos
+                  ? "Optimizing and saving your photos..."
+                  : "Tap to select photos from your device"}
+              </p>
 
               <button
                 type="button"
-                onClick={() => {
-                  // add sample photo to preview
-                  const sampleImages = [
-                    "/images/experience_safari_jeep.jpg",
-                    "/images/experience_walking_guide.jpg",
-                    "/images/camel_desert_sunset.jpg",
-                  ];
-                  const nextImg = sampleImages[selectedPhotos.length % sampleImages.length];
-                  if (!selectedPhotos.includes(nextImg)) {
-                    setSelectedPhotos((prev) => [...prev, nextImg]);
-                  }
-                  alert("Photo selected! You can upload up to 10 photos.");
+                disabled={isUploadingPhotos}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
                 }}
-                className="mt-4 px-8 py-3 bg-[#1B3D2F] hover:bg-[#143226] text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs"
+                className="mt-4 px-8 py-3 bg-[#1B3D2F] hover:bg-[#143226] disabled:opacity-50 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs flex items-center gap-2"
               >
-                Upload photos
+                {isUploadingPhotos ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <span>Upload photos</span>
+                )}
               </button>
             </div>
 

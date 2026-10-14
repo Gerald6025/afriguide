@@ -20,6 +20,7 @@ import {
   Check,
 } from "lucide-react";
 import { IosStatusBar } from "../IosStatusBar";
+import { uploadImageToSupabase, compressImage, updateProfileAvatar, getProfileAvatar } from "@/services/dbService";
 
 interface GuideProfileScreenProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ interface GuideProfileScreenProps {
   avatarUrl?: string;
   onLogout?: () => void;
   onSwitchToTourist?: () => void;
+  onUpdateAvatar?: (newUrl: string) => void;
 }
 
 export function GuideProfileScreen({
@@ -37,7 +39,70 @@ export function GuideProfileScreen({
   avatarUrl = "/images/desire_avatar.jpg",
   onLogout,
   onSwitchToTourist,
+  onUpdateAvatar,
 }: GuideProfileScreenProps) {
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const emailSpecific = guideEmail
+        ? localStorage.getItem(`afriguide_user_avatar_${guideEmail.trim().toLowerCase()}`)
+        : null;
+      if (emailSpecific && emailSpecific.trim()) return emailSpecific;
+      const stored = localStorage.getItem("afriguide_user_avatar");
+      if (stored && stored.trim()) return stored;
+    }
+    return avatarUrl;
+  });
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  React.useEffect(() => {
+    if (avatarUrl) {
+      setCurrentAvatarUrl(avatarUrl);
+    }
+  }, [avatarUrl]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const compressed = await compressImage(file, 256, 256, 0.85);
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(compressed);
+      });
+
+      let finalAvatar = dataUrl;
+      try {
+        const uploadedUrl = await uploadImageToSupabase(compressed, "afriguide-media");
+        if (uploadedUrl && !uploadedUrl.startsWith("blob:")) {
+          finalAvatar = uploadedUrl;
+        }
+      } catch (uploadErr) {
+        console.warn("Storage upload notice (using data URL):", uploadErr);
+      }
+
+      if (finalAvatar) {
+        setCurrentAvatarUrl(finalAvatar);
+        if (guideEmail) {
+          await updateProfileAvatar(guideEmail, finalAvatar);
+        } else if (typeof window !== "undefined") {
+          localStorage.setItem("afriguide_user_avatar", finalAvatar);
+        }
+        onUpdateAvatar?.(finalAvatar);
+      }
+    } catch (err) {
+      console.warn("Avatar upload error:", err);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
+    }
+  };
   const [activeModal, setActiveModal] = useState<
     "bio" | "languages" | "skills" | "ecocash" | "card" | "history" | null
   >(null);
@@ -88,19 +153,33 @@ export function GuideProfileScreen({
         <div className="w-full bg-white rounded-[24px] p-5 border border-stone-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col items-center">
           {/* Avatar with Edit Pencil */}
           <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-stone-100 border-2 border-white shadow-md">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-stone-100 border-2 border-white shadow-md relative">
               <Image
-                src={avatarUrl}
+                src={currentAvatarUrl}
                 alt={guideName}
                 width={96}
                 height={96}
                 className="w-full h-full object-cover"
               />
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                </div>
+              )}
             </div>
 
             <button
               type="button"
-              onClick={() => alert("Avatar upload: Choose a new profile picture from your device.")}
+              disabled={isUploadingAvatar}
+              onClick={() => avatarInputRef.current?.click()}
               aria-label="Edit avatar"
               className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center text-stone-700 hover:text-black cursor-pointer"
             >

@@ -35,6 +35,7 @@ import {
   getUserRole,
 } from "@/services/authService";
 import { createClient } from "@/lib/supabase/client";
+import { createBookingInDb, getProfileAvatar } from "@/services/dbService";
 
 // Screen Flow:
 // Screen 1: Loading page (single compass icon)
@@ -85,8 +86,13 @@ export function InteractiveApp() {
   });
   const [userAvatar, setUserAvatar] = useState<string>(() => {
     if (typeof window !== "undefined") {
+      const storedEmail = localStorage.getItem("afriguide_user_email");
+      if (storedEmail) {
+        const emailAvatar = localStorage.getItem(`afriguide_user_avatar_${storedEmail.trim().toLowerCase()}`);
+        if (emailAvatar && emailAvatar.trim()) return emailAvatar;
+      }
       const stored = localStorage.getItem("afriguide_user_avatar");
-      if (stored) return stored;
+      if (stored && stored.trim()) return stored;
       const role = localStorage.getItem("afriguide_user_role");
       if (role === "guide") return "/images/desire_avatar.jpg";
     }
@@ -156,9 +162,19 @@ export function InteractiveApp() {
             user.user_metadata?.full_name ||
             user.user_metadata?.name ||
             (email ? email.split("@")[0] : "AfriGuide Member");
+          const cleanEmail = email.trim().toLowerCase();
+          const emailSpecificAvatar = cleanEmail && typeof window !== "undefined"
+            ? localStorage.getItem(`afriguide_user_avatar_${cleanEmail}`)
+            : null;
+          const generalAvatar = typeof window !== "undefined"
+            ? localStorage.getItem("afriguide_user_avatar")
+            : null;
+
           const avatar =
             user.user_metadata?.avatar_url ||
             user.user_metadata?.picture ||
+            emailSpecificAvatar ||
+            generalAvatar ||
             "/images/user_avatar.png";
           const storedRole =
             (sessionStorage.getItem("afriguide_oauth_role") as "tourist" | "guide") ||
@@ -190,9 +206,19 @@ export function InteractiveApp() {
             user.user_metadata?.full_name ||
             user.user_metadata?.name ||
             (email ? email.split("@")[0] : "AfriGuide Member");
+          const cleanEmail = email.trim().toLowerCase();
+          const emailSpecificAvatar = cleanEmail && typeof window !== "undefined"
+            ? localStorage.getItem(`afriguide_user_avatar_${cleanEmail}`)
+            : null;
+          const generalAvatar = typeof window !== "undefined"
+            ? localStorage.getItem("afriguide_user_avatar")
+            : null;
+
           const avatar =
             user.user_metadata?.avatar_url ||
             user.user_metadata?.picture ||
+            emailSpecificAvatar ||
+            generalAvatar ||
             "/images/user_avatar.png";
           const storedRole =
             (sessionStorage.getItem("afriguide_oauth_role") as "tourist" | "guide") ||
@@ -457,6 +483,12 @@ export function InteractiveApp() {
                   return;
                 }
 
+                const cleanEmail = data.email.trim().toLowerCase();
+                setRegisteredEmail(cleanEmail);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("afriguide_user_email", cleanEmail);
+                }
+
                 // Extract user metadata from Supabase
                 const userObj = (res as any)?.data?.user;
                 if (userObj?.user_metadata?.full_name) {
@@ -471,6 +503,24 @@ export function InteractiveApp() {
                     localStorage.setItem("afriguide_account_created", userObj.created_at);
                   }
                 }
+
+                // Restore user's avatar
+                const savedAvatar = typeof window !== "undefined"
+                  ? localStorage.getItem(`afriguide_user_avatar_${cleanEmail}`) ||
+                    userObj?.user_metadata?.avatar_url ||
+                    localStorage.getItem("afriguide_user_avatar")
+                  : null;
+
+                if (savedAvatar && savedAvatar.trim()) {
+                  setUserAvatar(savedAvatar);
+                }
+
+                // Check Supabase profiles table for avatar in background
+                getProfileAvatar(cleanEmail).then((cloudAvatar) => {
+                  if (cloudAvatar && cloudAvatar.trim()) {
+                    setUserAvatar(cloudAvatar);
+                  }
+                });
 
                 // Determine whether user signed up as guide or tourist
                 const resolvedRole = getUserRole(data.email) || confirmedRole;
@@ -598,6 +648,9 @@ export function InteractiveApp() {
               setUserAvatar(newAvatar);
               if (typeof window !== "undefined") {
                 localStorage.setItem("afriguide_user_avatar", newAvatar);
+                if (registeredEmail) {
+                  localStorage.setItem(`afriguide_user_avatar_${registeredEmail.trim().toLowerCase()}`, newAvatar);
+                }
               }
             }}
             onLogout={() => setCurrentScreen(10)}
@@ -652,8 +705,29 @@ export function InteractiveApp() {
           <PaymentScreen
             bookingDetails={demoBookingDetails || undefined}
             onBack={() => setCurrentScreen(17)}
-            onPayNow={(info) => {
+            onPayNow={async (info) => {
               setDemoPaymentInfo(info);
+              if (demoBookingDetails) {
+                try {
+                  await createBookingInDb({
+                    tourist_name: userFullName || "Traveler",
+                    tourist_email: registeredEmail || undefined,
+                    tour_title: demoBookingDetails.tour.title,
+                    location: demoBookingDetails.tour.location,
+                    tour_image_url: demoBookingDetails.tour.imageUrl,
+                    date: demoBookingDetails.date,
+                    time_slot: "09:00am-17:00pm",
+                    party_size: demoBookingDetails.peopleCount,
+                    price_per_person: demoBookingDetails.tour.pricePerPerson,
+                    total_price: demoBookingDetails.totalPrice,
+                    status: "Pending",
+                    guide_name: demoBookingDetails.tour.guideName || "Desire Sibanda",
+                    guide_avatar: "/images/desire_avatar.jpg",
+                  });
+                } catch (e) {
+                  console.error("Failed to create booking in Supabase:", e);
+                }
+              }
               setCurrentScreen(16);
             }}
           />
@@ -689,6 +763,9 @@ export function InteractiveApp() {
               setUserAvatar(newAvatar);
               if (typeof window !== "undefined") {
                 localStorage.setItem("afriguide_user_avatar", newAvatar);
+                if (registeredEmail) {
+                  localStorage.setItem(`afriguide_user_avatar_${registeredEmail.trim().toLowerCase()}`, newAvatar);
+                }
               }
             }}
             onBack={() => (confirmedRole === "guide" ? setCurrentScreen(21) : setCurrentScreen(13))}
@@ -706,6 +783,15 @@ export function InteractiveApp() {
             avatarUrl={userAvatar || "/images/desire_avatar.jpg"}
             onLogout={() => setCurrentScreen(10)}
             onNavigateTourist={() => setCurrentScreen(13)}
+            onUpdateAvatar={(newAvatar) => {
+              setUserAvatar(newAvatar);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("afriguide_user_avatar", newAvatar);
+                if (registeredEmail) {
+                  localStorage.setItem(`afriguide_user_avatar_${registeredEmail.trim().toLowerCase()}`, newAvatar);
+                }
+              }
+            }}
           />
         );
 

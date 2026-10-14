@@ -71,6 +71,20 @@ export async function isEmailAlreadyRegistered(email: string): Promise<boolean> 
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) return false;
 
+  // If account was deleted, purge residual storage and treat as not registered
+  if (DELETED_ACCOUNTS.includes(cleanEmail)) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`afriguide_auth_pwd_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_user_role_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_profile_session_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_user_avatar_${cleanEmail}`);
+      const reg = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
+      const updated = reg.filter((e: string) => e !== cleanEmail);
+      localStorage.setItem("afriguide_registered_emails", JSON.stringify(updated));
+    }
+    return false;
+  }
+
   try {
     const supabase = createClient();
     // 1. Check profiles table in Supabase
@@ -237,21 +251,21 @@ export async function signInWithProvider(
   }
 }
 
+export const DELETED_ACCOUNTS = [
+  "gerald@uncommon.org",
+  "sibdesire263@gmail.com",
+  "gerald@uncommon",
+];
+
 /**
  * Check if the profile session has been completed for an account
  */
 export function isProfileSessionReady(email: string): boolean {
-  let cleanEmail = email.trim().toLowerCase();
-  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
-    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
-  }
-  if (!cleanEmail) return false;
-  // Known accounts & registered users are always ready
-  if (
-    cleanEmail === "geraldgchibanda6025@gmail.com" ||
-    cleanEmail === "gerald@uncommon.org" ||
-    cleanEmail.includes("uncommon")
-  ) {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || DELETED_ACCOUNTS.includes(cleanEmail)) return false;
+
+  // Known active accounts are always ready
+  if (cleanEmail === "geraldgchibanda6025@gmail.com") {
     return true;
   }
   if (typeof window === "undefined") return true;
@@ -264,11 +278,8 @@ export function isProfileSessionReady(email: string): boolean {
  * Marks the profile session as completed for an account
  */
 export function markProfileSessionCompleted(email: string): void {
-  let cleanEmail = email.trim().toLowerCase();
-  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
-    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
-  }
-  if (!cleanEmail || typeof window === "undefined") return;
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || typeof window === "undefined" || DELETED_ACCOUNTS.includes(cleanEmail)) return;
   localStorage.setItem(`afriguide_profile_session_${cleanEmail}`, "completed");
 }
 
@@ -346,11 +357,7 @@ export async function processProfileSession(params: {
 export function getUserRole(email?: string): "tourist" | "guide" {
   if (typeof window === "undefined") return "tourist";
   if (email) {
-    let cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
-      cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
-    }
-    if (cleanEmail === "gerald@uncommon.org") return "guide";
+    const cleanEmail = email.trim().toLowerCase();
     const stored = localStorage.getItem(`afriguide_user_role_${cleanEmail}`);
     if (stored === "guide" || stored === "tourist") return stored;
   }
@@ -366,15 +373,29 @@ export async function signInUser(
   email: string,
   password: string
 ): Promise<AuthResult> {
-  let cleanEmail = email.trim().toLowerCase();
-  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
-    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
-  }
+  const cleanEmail = email.trim().toLowerCase();
 
   if (!cleanEmail) {
     return {
       success: false,
       error: "Please enter your email address.",
+    };
+  }
+
+  // Explicitly block deleted accounts and purge residual local state
+  if (DELETED_ACCOUNTS.includes(cleanEmail)) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`afriguide_auth_pwd_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_user_role_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_profile_session_${cleanEmail}`);
+      localStorage.removeItem(`afriguide_user_avatar_${cleanEmail}`);
+      const reg = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
+      const updated = reg.filter((e: string) => e !== cleanEmail);
+      localStorage.setItem("afriguide_registered_emails", JSON.stringify(updated));
+    }
+    return {
+      success: false,
+      error: "This account has been deleted. Please sign up to create a new account.",
     };
   }
 
@@ -412,26 +433,6 @@ export async function signInUser(
             };
           }
         }
-      }
-
-      // Guide account: gerald@uncommon.org
-      if (cleanEmail === "gerald@uncommon.org") {
-        if (password.length >= 6) {
-          markProfileSessionCompleted(cleanEmail);
-          if (typeof window !== "undefined") {
-            localStorage.setItem(`afriguide_auth_pwd_${cleanEmail}`, password);
-            localStorage.setItem(`afriguide_user_role_${cleanEmail}`, "guide");
-            localStorage.setItem("afriguide_user_role", "guide");
-          }
-          return {
-            success: true,
-            data: { user: { email: cleanEmail } },
-          };
-        }
-        return {
-          success: false,
-          error: "Password must be at least 6 characters long.",
-        };
       }
 
       // Check default demo account

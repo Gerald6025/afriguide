@@ -74,7 +74,18 @@ export function InteractiveApp() {
   const [registeredEmail, setRegisteredEmail] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("afriguide_user_email");
-      if (stored) return stored;
+      if (stored) {
+        const clean = stored.trim().toLowerCase();
+        if (clean === "gerald@uncommon.org" || clean === "sibdesire263@gmail.com" || clean === "gerald@uncommon") {
+          localStorage.removeItem("afriguide_user_email");
+          localStorage.removeItem(`afriguide_auth_pwd_${clean}`);
+          localStorage.removeItem(`afriguide_profile_session_${clean}`);
+          localStorage.removeItem(`afriguide_user_role_${clean}`);
+          localStorage.removeItem(`afriguide_user_avatar_${clean}`);
+        } else {
+          return stored;
+        }
+      }
     }
     return "geraldgchibanda6025@gmail.com";
   });
@@ -542,17 +553,7 @@ export function InteractiveApp() {
               setAuthLoading(true);
               setSignInError(null);
               try {
-                let cleanEmail = data.email.trim().toLowerCase();
-                if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
-                  cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
-                }
-
-                if (cleanEmail) {
-                  setRegisteredEmail(cleanEmail);
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("afriguide_user_email", cleanEmail);
-                  }
-                }
+                const cleanEmail = data.email.trim().toLowerCase();
 
                 const res = await signInUser(cleanEmail, data.password);
                 if (!res.success) {

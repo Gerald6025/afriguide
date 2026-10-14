@@ -80,11 +80,7 @@ export function SignInScreen({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let clean = email.trim();
-    if (clean.toLowerCase() === "gerald@uncommon" || clean.toLowerCase().endsWith("@uncommon")) {
-      clean = clean.toLowerCase().endsWith(".org") ? clean : clean + ".org";
-      setEmail(clean);
-    }
+    const clean = email.trim();
     onLogin?.({ email: clean, password });
   };
 
@@ -153,12 +149,6 @@ export function SignInScreen({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => {
-                const trimmed = email.trim().toLowerCase();
-                if (trimmed === "gerald@uncommon" || trimmed.endsWith("@uncommon")) {
-                  setEmail(trimmed.endsWith(".org") ? trimmed : trimmed + ".org");
-                }
-              }}
               placeholder="john@email.com"
               className="w-full px-4 py-3.5 rounded-[16px] bg-white border border-stone-200/90 text-stone-900 placeholder:text-stone-400 text-[15px] focus:outline-none focus:border-[#1E3F32] focus:ring-1 focus:ring-[#1E3F32] transition-colors font-sans shadow-2xs"
             />

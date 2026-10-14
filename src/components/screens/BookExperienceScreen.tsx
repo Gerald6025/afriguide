@@ -211,6 +211,7 @@ export function BookExperienceScreen({
               fill
               className="object-cover"
               sizes="92px"
+              unoptimized
             />
           </div>
 

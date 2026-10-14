@@ -339,6 +339,7 @@ export function GuideMessagesScreen({
             width={36}
             height={36}
             className="w-full h-full object-cover"
+            unoptimized
           />
         </div>
       </div>
@@ -386,6 +387,7 @@ export function GuideMessagesScreen({
                   width={52}
                   height={52}
                   className="w-full h-full object-cover"
+                  unoptimized
                 />
               </div>
 
@@ -449,6 +451,7 @@ export function GuideMessagesScreen({
                   width={40}
                   height={40}
                   className="w-full h-full object-cover"
+                  unoptimized
                 />
               </div>
 

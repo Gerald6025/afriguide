@@ -99,7 +99,7 @@ export function AfriGuideCircularEmblem({
       className={`relative flex items-center justify-center select-none ${className}`}
     >
       <Image
-        src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373"
+        src="/images/afriguide-logo.png"
         alt="AfriGuide Logo"
         width={size}
         height={size}
@@ -111,8 +111,7 @@ export function AfriGuideCircularEmblem({
   );
 }
 
-const BRAND_HORIZONTAL_LOGO_URL =
-  "https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(2).png?updatedAt=1779444036200";
+const BRAND_HORIZONTAL_LOGO_URL = "/images/afriguide-logo-horizontal.png";
 
 /**
  * Header logo badge — horizontal AfriGuide brand logo (Logo 2).

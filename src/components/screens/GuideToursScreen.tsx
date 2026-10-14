@@ -187,6 +187,7 @@ export function GuideToursScreen({
             width={36}
             height={36}
             className="w-full h-full object-cover"
+            unoptimized
           />
         </div>
       </div>
@@ -264,6 +265,7 @@ export function GuideToursScreen({
                     fill
                     className="object-cover"
                     sizes="(max-width: 430px) 50vw, 200px"
+                    unoptimized
                   />
                 </div>
 

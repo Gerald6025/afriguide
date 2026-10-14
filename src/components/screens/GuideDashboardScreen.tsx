@@ -448,9 +448,12 @@ export function GuideDashboardScreen({
           <div className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373"
+              src="/images/afriguide-logo.png"
               alt="AfriGuide Logo"
               className="w-9 h-9 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373";
+              }}
             />
           </div>
 
@@ -474,6 +477,7 @@ export function GuideDashboardScreen({
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             </div>
           </div>
@@ -598,11 +602,12 @@ export function GuideDashboardScreen({
             {/* Left Safari Photo */}
             <div className="w-[45%] relative shrink-0 min-h-[148px]">
               <Image
-                src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/f8ae0d559de38c218f176ecbd3b846e66ded1d04.jpg"
+                src="/images/zebras_safari.jpg"
                 alt="Sunset Safari Guide"
                 fill
                 sizes="(max-width: 430px) 45vw, 190px"
                 className="object-cover"
+                unoptimized
               />
             </div>
 
@@ -642,6 +647,7 @@ export function GuideDashboardScreen({
                       width={16}
                       height={16}
                       className="object-cover w-full h-full"
+                      unoptimized
                     />
                   </div>
                   <span className="truncate">Desire & group - $320</span>
@@ -680,6 +686,7 @@ export function GuideDashboardScreen({
                 fill
                 sizes="(max-width: 430px) 45vw, 190px"
                 className="object-cover"
+                unoptimized
               />
             </div>
 
@@ -713,6 +720,7 @@ export function GuideDashboardScreen({
                       width={16}
                       height={16}
                       className="object-cover w-full h-full"
+                      unoptimized
                     />
                   </div>
                   <span className="truncate">Sarah M. & guest - $180</span>

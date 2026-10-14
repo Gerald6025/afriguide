@@ -110,6 +110,7 @@ export function TourPreviewScreen({
             sizes="(max-width: 430px) 100vw, 420px"
             className="object-cover transition-opacity duration-300"
             priority
+            unoptimized
           />
 
           {/* Heart Button */}
@@ -256,6 +257,7 @@ export function TourPreviewScreen({
                   fill
                   sizes="100px"
                   className="object-cover"
+                  unoptimized
                 />
               </div>
             ))}

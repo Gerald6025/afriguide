@@ -832,8 +832,8 @@ export function TouristHomeScreen({
                 sizes="(max-width: 430px) 50vw, 250px"
                 className="object-cover object-[center_28%]"
                 priority
+                unoptimized
               />
-
               {/* Organic S-curve wave boundary blending with the left background */}
               <svg
                 viewBox="0 0 50 200"
@@ -882,11 +882,12 @@ export function TouristHomeScreen({
                 {/* Image Container with Badges */}
                 <div className="relative w-full h-[160px] rounded-[22px] overflow-hidden bg-stone-100 shadow-2xs">
                   <Image
-                    src={exp.imageUrl}
+                    src={exp.imageUrl || "/images/safari_guide_elephants.jpg"}
                     alt={exp.title}
                     fill
                     sizes="250px"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    unoptimized
                   />
 
                   {/* Best Seller Badge */}

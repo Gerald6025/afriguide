@@ -168,6 +168,7 @@ export function GuideProfileScreen({
                 width={96}
                 height={96}
                 className="w-full h-full object-cover"
+                unoptimized
               />
               {isUploadingAvatar && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">

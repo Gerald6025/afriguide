@@ -788,6 +788,7 @@ export function AddNewTourScreen({
                       alt={`Tour photo ${i + 1}`}
                       fill
                       className="object-cover"
+                      unoptimized
                     />
                     <button
                       type="button"

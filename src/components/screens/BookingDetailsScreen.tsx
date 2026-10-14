@@ -136,6 +136,7 @@ export function BookingDetailsScreen({
                 fill
                 className="object-cover"
                 sizes="110px"
+                unoptimized
               />
             </div>
 

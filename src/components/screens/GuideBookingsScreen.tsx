@@ -320,6 +320,7 @@ export function GuideBookingsScreen({
                       width={44}
                       height={44}
                       className="w-full h-full object-cover"
+                      unoptimized
                     />
                   </div>
 
@@ -525,6 +526,7 @@ export function GuideBookingsScreen({
                     width={36}
                     height={36}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 </div>
                 <div>

@@ -74,18 +74,7 @@ export function InteractiveApp() {
   const [registeredEmail, setRegisteredEmail] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("afriguide_user_email");
-      if (stored) {
-        const clean = stored.trim().toLowerCase();
-        if (clean === "gerald@uncommon.org" || clean === "sibdesire263@gmail.com" || clean === "gerald@uncommon") {
-          localStorage.removeItem("afriguide_user_email");
-          localStorage.removeItem(`afriguide_auth_pwd_${clean}`);
-          localStorage.removeItem(`afriguide_profile_session_${clean}`);
-          localStorage.removeItem(`afriguide_user_role_${clean}`);
-          localStorage.removeItem(`afriguide_user_avatar_${clean}`);
-        } else {
-          return stored;
-        }
-      }
+      if (stored) return stored;
     }
     return "geraldgchibanda6025@gmail.com";
   });

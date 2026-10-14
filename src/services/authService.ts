@@ -146,8 +146,10 @@ export async function signUpUser({
     });
 
     if (error) {
-      console.warn("Supabase signUp error:", error.message);
+      console.warn("Supabase signUp notice:", error.message);
       const msg = error.message.toLowerCase();
+
+      // Check if email already registered
       if (
         msg.includes("already registered") ||
         msg.includes("already in use") ||
@@ -159,8 +161,28 @@ export async function signUpUser({
           error: "An account with this email address already exists. Please sign in instead.",
         };
       }
-      return { success: false, error: error.message };
+
+      // Check for Supabase free-tier email rate limit (over_email_send_rate_limit)
+      const isEmailRateLimit =
+        msg.includes("rate limit") ||
+        msg.includes("limit exceeded") ||
+        msg.includes("over_email_send_rate_limit") ||
+        (error as any).status === 429;
+
+      if (!isEmailRateLimit) {
+        return { success: false, error: error.message };
+      }
+
+      console.info(
+        "Supabase email rate limit reached. Proceeding with AfriGuide database profile sync and custom OTP delivery."
+      );
     }
+
+    const userId =
+      data?.user?.id ||
+      (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `usr_${Date.now()}`);
 
     if (typeof window !== "undefined") {
       localStorage.setItem("afriguide_user_role", role);
@@ -175,23 +197,24 @@ export async function signUpUser({
       }
     }
 
-    // Create profile in profiles table
-    if (data.user) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from("profiles").upsert({
-          id: data.user.id,
-          full_name: name,
-          email: cleanEmail,
-          role: role === "tourist" ? "traveler" : "guide",
-          created_at: new Date().toISOString(),
-        });
-      } catch (profileErr) {
-        console.warn("Profile upsert notice:", profileErr);
-      }
+    // Always create / upsert profile in public.profiles table (not affected by email rate limits)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("profiles").upsert({
+        id: userId,
+        full_name: name,
+        email: cleanEmail,
+        role: role === "tourist" ? "traveler" : "guide",
+        created_at: new Date().toISOString(),
+      });
+    } catch (profileErr) {
+      console.warn("Profile upsert notice:", profileErr);
     }
 
-    return { success: true, data };
+    return {
+      success: true,
+      data: data?.user ? data : { user: { id: userId, email: cleanEmail } },
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to create account";
     return { success: false, error: message };

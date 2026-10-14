@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Check, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
 import { IosHomeIndicator } from "../IosStatusBar";
 import { AfriGuideLogoBadge } from "../AfriGuideLogo";
+import { validatePasswordStrength } from "@/services/authService";
 
 interface JoinCommunityScreenProps {
   initialRole?: "tourist" | "guide";
   onBack?: () => void;
   onSignIn?: () => void;
   onCreateAccount?: (data: { name: string; email: string; password?: string; role: "tourist" | "guide" }) => void;
+  onSocialLogin?: (provider: "google" | "facebook") => void;
   isLoading?: boolean;
+  errorMessage?: string | null;
 }
 
 // Apple Brand Icon
@@ -64,7 +67,9 @@ export function JoinCommunityScreen({
   onBack,
   onSignIn,
   onCreateAccount,
+  onSocialLogin,
   isLoading = false,
+  errorMessage = null,
 }: JoinCommunityScreenProps) {
   const [role, setRole] = useState<"tourist" | "guide">(initialRole);
   const [fullName, setFullName] = useState<string>("");
@@ -73,18 +78,35 @@ export function JoinCommunityScreen({
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(false);
   const [termsError, setTermsError] = useState<boolean>(false);
+  const [passwordSubmittedError, setPasswordSubmittedError] = useState<string | null>(null);
+
+  const passwordStrength = useMemo(() => {
+    return validatePasswordStrength(password);
+  }, [password]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordSubmittedError(null);
+
+    // Enforce Terms
     if (!agreedToTerms) {
       setTermsError(true);
       return;
     }
+
+    // Enforce Strong Password
+    if (!passwordStrength.isValid) {
+      setPasswordSubmittedError(
+        "Please create a strong password that meets all 5 security requirements below."
+      );
+      return;
+    }
+
     onCreateAccount?.({ name: fullName, email, password, role });
   };
 
   return (
-    <div className="relative w-full h-full min-h-full bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden overflow-y-auto px-5 pt-2 pb-2 select-none">
+    <div className="relative w-full h-full min-h-full bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden overflow-y-auto px-5 pt-2 pb-6 select-none">
       {/* Top Header Bar with Back Arrow and Centered AfriGuide Logo Badge */}
       <div className="relative flex items-center justify-between pt-1 pb-3 w-full min-h-[44px]">
         {onBack && (
@@ -114,14 +136,33 @@ export function JoinCommunityScreen({
           </p>
         </div>
 
+        {/* Global Error Banner (e.g. Email Already Exists) */}
+        {errorMessage && (
+          <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-[18px] text-[13px] text-red-700 font-semibold flex items-start gap-2.5 animate-in fade-in duration-200">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p>{errorMessage}</p>
+              {errorMessage.toLowerCase().includes("already exists") && (
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className="mt-1 text-xs text-[#E8622A] font-bold underline cursor-pointer block"
+                >
+                  Click here to Sign In instead →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Role Segmented Pill Switcher */}
-        <div className="w-full bg-[#EDEDED] rounded-[18px] p-1.5 flex items-center mb-6">
+        <div className="w-full bg-[#EDEDED] rounded-[18px] p-1.5 flex items-center mb-5">
           <button
             type="button"
             onClick={() => setRole("tourist")}
             className={`flex-1 py-2.5 rounded-[14px] text-[14px] font-semibold transition-all cursor-pointer text-center ${
               role === "tourist"
-                ? "bg-white text-black shadow-xs"
+                ? "bg-white text-black shadow-xs font-bold"
                 : "text-stone-600 hover:text-black"
             }`}
           >
@@ -132,7 +173,7 @@ export function JoinCommunityScreen({
             onClick={() => setRole("guide")}
             className={`flex-1 py-2.5 rounded-[14px] text-[14px] font-semibold transition-all cursor-pointer text-center ${
               role === "guide"
-                ? "bg-white text-black shadow-xs"
+                ? "bg-white text-black shadow-xs font-bold"
                 : "text-stone-600 hover:text-black"
             }`}
           >
@@ -166,7 +207,9 @@ export function JoinCommunityScreen({
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
               placeholder="john@email.com"
               className="w-full px-4 py-3.5 rounded-[16px] bg-white border border-stone-200/90 text-stone-900 placeholder:text-stone-400 text-[15px] focus:outline-none focus:border-[#1E3F32] focus:ring-1 focus:ring-[#1E3F32] transition-colors"
             />
@@ -182,8 +225,11 @@ export function JoinCommunityScreen({
                 type={showPassword ? "text" : "password"}
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="•••••••••"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordSubmittedError(null);
+                }}
+                placeholder="••••••••••••"
                 className="w-full px-4 py-3.5 pr-12 rounded-[16px] bg-white border border-stone-200/90 text-stone-900 placeholder:text-stone-400 text-[15px] focus:outline-none focus:border-[#1E3F32] focus:ring-1 focus:ring-[#1E3F32] transition-colors font-sans"
               />
               <button
@@ -199,6 +245,150 @@ export function JoinCommunityScreen({
                 )}
               </button>
             </div>
+
+            {/* Live Password Strength Meter */}
+            {password.length > 0 && (
+              <div className="mt-2.5 p-3.5 bg-[#F8F9F8] rounded-[16px] border border-stone-200/70 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="font-bold text-stone-600">Password strength:</span>
+                  <span
+                    className={`font-black tracking-tight ${
+                      passwordStrength.isValid
+                        ? "text-emerald-700"
+                        : passwordStrength.score >= 3
+                        ? "text-amber-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {passwordStrength.isValid
+                      ? "Strong & Secure ✓"
+                      : passwordStrength.score >= 3
+                      ? "Good"
+                      : passwordStrength.score === 2
+                      ? "Fair"
+                      : "Weak"}
+                  </span>
+                </div>
+
+                {/* Progress bar with 4 segments */}
+                <div className="grid grid-cols-4 gap-1.5 h-1.5">
+                  <div
+                    className={`rounded-full h-full transition-all ${
+                      passwordStrength.score >= 1
+                        ? passwordStrength.isValid
+                          ? "bg-emerald-500"
+                          : passwordStrength.score >= 2
+                          ? "bg-amber-500"
+                          : "bg-red-500"
+                        : "bg-stone-200"
+                    }`}
+                  />
+                  <div
+                    className={`rounded-full h-full transition-all ${
+                      passwordStrength.score >= 2
+                        ? passwordStrength.isValid
+                          ? "bg-emerald-500"
+                          : "bg-amber-500"
+                        : "bg-stone-200"
+                    }`}
+                  />
+                  <div
+                    className={`rounded-full h-full transition-all ${
+                      passwordStrength.score >= 3
+                        ? passwordStrength.isValid
+                          ? "bg-emerald-500"
+                          : "bg-amber-500"
+                        : "bg-stone-200"
+                    }`}
+                  />
+                  <div
+                    className={`rounded-full h-full transition-all ${
+                      passwordStrength.isValid ? "bg-emerald-500" : "bg-stone-200"
+                    }`}
+                  />
+                </div>
+
+                {/* Security Requirements Checklist */}
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] pt-1">
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      passwordStrength.hasMinLength
+                        ? "text-emerald-700 font-bold"
+                        : "text-stone-500"
+                    }`}
+                  >
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[2.5] ${
+                        passwordStrength.hasMinLength ? "text-emerald-600" : "opacity-30"
+                      }`}
+                    />
+                    <span>8+ characters</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      passwordStrength.hasUppercase
+                        ? "text-emerald-700 font-bold"
+                        : "text-stone-500"
+                    }`}
+                  >
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[2.5] ${
+                        passwordStrength.hasUppercase ? "text-emerald-600" : "opacity-30"
+                      }`}
+                    />
+                    <span>Uppercase (A-Z)</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      passwordStrength.hasLowercase
+                        ? "text-emerald-700 font-bold"
+                        : "text-stone-500"
+                    }`}
+                  >
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[2.5] ${
+                        passwordStrength.hasLowercase ? "text-emerald-600" : "opacity-30"
+                      }`}
+                    />
+                    <span>Lowercase (a-z)</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 ${
+                      passwordStrength.hasNumber
+                        ? "text-emerald-700 font-bold"
+                        : "text-stone-500"
+                    }`}
+                  >
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[2.5] ${
+                        passwordStrength.hasNumber ? "text-emerald-600" : "opacity-30"
+                      }`}
+                    />
+                    <span>Number (0-9)</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 col-span-2 ${
+                      passwordStrength.hasSpecial
+                        ? "text-emerald-700 font-bold"
+                        : "text-stone-500"
+                    }`}
+                  >
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[2.5] ${
+                        passwordStrength.hasSpecial ? "text-emerald-600" : "opacity-30"
+                      }`}
+                    />
+                    <span>Special character (!@#$%^&*...)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {passwordSubmittedError && (
+              <p className="text-[12px] text-red-600 font-bold mt-1.5">
+                {passwordSubmittedError}
+              </p>
+            )}
           </div>
 
           {/* Terms Agreement Checkbox */}
@@ -247,7 +437,7 @@ export function JoinCommunityScreen({
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-4 rounded-[22px] font-bold text-[16px] tracking-normal transition-all text-center mt-3 flex items-center justify-center gap-2 ${
+            className={`w-full py-4 rounded-[22px] font-bold text-[16px] tracking-normal transition-all text-center mt-2 flex items-center justify-center gap-2 ${
               agreedToTerms && !isLoading
                 ? "bg-[#1E3F32] hover:bg-[#163325] active:scale-[0.98] text-white cursor-pointer shadow-sm"
                 : "bg-[#1E3F32]/50 text-white/90 cursor-pointer"
@@ -277,6 +467,7 @@ export function JoinCommunityScreen({
         <div className="grid grid-cols-3 gap-3 w-full">
           <button
             type="button"
+            onClick={() => onSocialLogin?.("apple" as any)}
             aria-label="Sign up with Apple"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >
@@ -284,6 +475,7 @@ export function JoinCommunityScreen({
           </button>
           <button
             type="button"
+            onClick={() => onSocialLogin?.("facebook")}
             aria-label="Sign up with Facebook"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >
@@ -291,6 +483,7 @@ export function JoinCommunityScreen({
           </button>
           <button
             type="button"
+            onClick={() => onSocialLogin?.("google")}
             aria-label="Sign up with Google"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >

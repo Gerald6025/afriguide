@@ -13,16 +13,125 @@ export interface AuthResult<T = unknown> {
   error?: string;
 }
 
+export interface PasswordStrengthResult {
+  isValid: boolean;
+  score: number; // 0 to 4
+  hasMinLength: boolean;
+  hasUppercase: boolean;
+  hasLowercase: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+  errors: string[];
+}
+
 /**
- * Register a new user with Supabase Auth
+ * Validates that a password is strong:
+ * - At least 8 characters
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one number
+ * - At least one special symbol
+ */
+export function validatePasswordStrength(password: string): PasswordStrengthResult {
+  const hasMinLength = password.length >= 8;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password);
+
+  const errors: string[] = [];
+  if (!hasMinLength) errors.push("At least 8 characters long");
+  if (!hasUppercase) errors.push("At least one uppercase letter (A-Z)");
+  if (!hasLowercase) errors.push("At least one lowercase letter (a-z)");
+  if (!hasNumber) errors.push("At least one number (0-9)");
+  if (!hasSpecial) errors.push("At least one special character (!@#$...)");
+
+  let score = 0;
+  if (hasMinLength) score++;
+  if (hasUppercase && hasLowercase) score++;
+  if (hasNumber) score++;
+  if (hasSpecial) score++;
+
+  return {
+    isValid: hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial,
+    score,
+    hasMinLength,
+    hasUppercase,
+    hasLowercase,
+    hasNumber,
+    hasSpecial,
+    errors,
+  };
+}
+
+/**
+ * Checks if an email address is already registered in AfriGuide
+ */
+export async function isEmailAlreadyRegistered(email: string): Promise<boolean> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) return false;
+
+  try {
+    const supabase = createClient();
+    // 1. Check profiles table in Supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("profiles") as any)
+      .select("id")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (!error && data) {
+      return true;
+    }
+  } catch (err) {
+    console.warn("Notice checking profiles for existing email:", err);
+  }
+
+  // 2. Check local registered sessions
+  if (typeof window !== "undefined") {
+    if (localStorage.getItem(`afriguide_profile_session_${cleanEmail}`) === "completed") {
+      return true;
+    }
+    const registeredUsers = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
+    if (Array.isArray(registeredUsers) && registeredUsers.includes(cleanEmail)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Register a new user with Supabase Auth:
+ * - Enforces strong password requirements
+ * - Strictly prevents duplicate accounts using the same email address
  */
 export async function signUpUser({
   name,
   email,
-  password = "AfriGuidePassword123!",
+  password = "",
   role,
 }: SignUpParams): Promise<AuthResult> {
   const cleanEmail = email.trim().toLowerCase();
+
+  // 1. ENFORCE STRONG PASSWORD
+  const strength = validatePasswordStrength(password);
+  if (!strength.isValid) {
+    return {
+      success: false,
+      error: `Password is too weak. Please ensure it has: ${strength.errors.join(", ")}.`,
+    };
+  }
+
+  // 2. ENFORCE UNIQUE EMAIL ADDRESS (No duplicate accounts)
+  const isExisting = await isEmailAlreadyRegistered(cleanEmail);
+  if (isExisting) {
+    return {
+      success: false,
+      error: "An account with this email address already exists. Please sign in instead.",
+    };
+  }
+
   try {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -38,22 +147,39 @@ export async function signUpUser({
 
     if (error) {
       console.warn("Supabase signUp error:", error.message);
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes("already registered") ||
+        msg.includes("already in use") ||
+        msg.includes("user already exists") ||
+        msg.includes("unique")
+      ) {
+        return {
+          success: false,
+          error: "An account with this email address already exists. Please sign in instead.",
+        };
+      }
       return { success: false, error: error.message };
     }
 
     if (typeof window !== "undefined") {
       localStorage.setItem("afriguide_user_role", role);
       localStorage.setItem(`afriguide_user_role_${cleanEmail}`, role);
+      const registered = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
+      if (!registered.includes(cleanEmail)) {
+        registered.push(cleanEmail);
+        localStorage.setItem("afriguide_registered_emails", JSON.stringify(registered));
+      }
     }
 
-    // Try to create profile in profiles table (non-blocking if table not created yet)
+    // Create profile in profiles table
     if (data.user) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from("profiles").upsert({
           id: data.user.id,
           full_name: name,
-          email,
+          email: cleanEmail,
           role: role === "tourist" ? "traveler" : "guide",
           created_at: new Date().toISOString(),
         });
@@ -65,6 +191,45 @@ export async function signUpUser({
     return { success: true, data };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to create account";
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Sign in or Sign up using Google or Facebook OAuth via Supabase
+ */
+export async function signInWithProvider(
+  provider: "google" | "facebook" | "apple",
+  role: "tourist" | "guide" = "tourist"
+): Promise<AuthResult> {
+  try {
+    const supabase = createClient();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("afriguide_user_role", role);
+      sessionStorage.setItem("afriguide_oauth_in_progress", "true");
+      sessionStorage.setItem("afriguide_oauth_role", role);
+    }
+
+    const redirectUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}`
+        : undefined;
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      console.warn(`Supabase ${provider} OAuth error:`, error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : `Failed to sign in with ${provider}`;
     return { success: false, error: message };
   }
 }

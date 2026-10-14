@@ -12,6 +12,7 @@ interface SignInScreenProps {
   onForgotPassword?: () => void;
   onVerifyOtp?: () => void;
   onLogin?: (data: { email: string; password: string }) => void;
+  onSocialLogin?: (provider: "google" | "facebook") => void;
   errorMessage?: string | null;
   isLoading?: boolean;
 }
@@ -69,6 +70,7 @@ export function SignInScreen({
   onForgotPassword,
   onVerifyOtp,
   onLogin,
+  onSocialLogin,
   errorMessage = null,
   isLoading = false,
 }: SignInScreenProps) {
@@ -210,6 +212,7 @@ export function SignInScreen({
         <div className="grid grid-cols-3 gap-3 w-full">
           <button
             type="button"
+            onClick={() => onSocialLogin?.("apple" as any)}
             aria-label="Sign in with Apple"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >
@@ -217,6 +220,7 @@ export function SignInScreen({
           </button>
           <button
             type="button"
+            onClick={() => onSocialLogin?.("facebook")}
             aria-label="Sign in with Facebook"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >
@@ -224,6 +228,7 @@ export function SignInScreen({
           </button>
           <button
             type="button"
+            onClick={() => onSocialLogin?.("google")}
             aria-label="Sign in with Google"
             className="h-[52px] rounded-[18px] bg-white border border-stone-200/80 flex items-center justify-center hover:bg-stone-50 active:scale-[0.97] transition-all cursor-pointer shadow-2xs"
           >

@@ -25,13 +25,16 @@ import { GuideDashboardScreen } from "./screens/GuideDashboardScreen";
 import {
   signUpUser,
   signInUser,
+  signInWithProvider,
   sendEmailOtp,
   verifyEmailOtp,
   resendEmailOtp,
   processProfileSession,
   isProfileSessionReady,
+  markProfileSessionCompleted,
   getUserRole,
 } from "@/services/authService";
+import { createClient } from "@/lib/supabase/client";
 
 // Screen Flow:
 // Screen 1: Loading page (single compass icon)
@@ -91,6 +94,7 @@ export function InteractiveApp() {
   });
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [signInError, setSignInError] = useState<string | null>(null);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   const [profileProcessingStatus, setProfileProcessingStatus] = useState<
     "verifying" | "processing" | "ready" | null
   >(null);
@@ -139,6 +143,113 @@ export function InteractiveApp() {
     // Step 2 -> Screen 5 ("Your story starts here")
     setCurrentScreen(3 + stepIndex);
   }, []);
+
+  // Listen for Supabase OAuth login redirects (Google & Facebook)
+  React.useEffect(() => {
+    try {
+      const supabase = createClient();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const user = session.user;
+          const email = user.email || "";
+          const name =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            (email ? email.split("@")[0] : "AfriGuide Member");
+          const avatar =
+            user.user_metadata?.avatar_url ||
+            user.user_metadata?.picture ||
+            "/images/user_avatar.png";
+          const storedRole =
+            (sessionStorage.getItem("afriguide_oauth_role") as "tourist" | "guide") ||
+            (localStorage.getItem("afriguide_user_role") as "tourist" | "guide") ||
+            "tourist";
+
+          setUserFullName(name);
+          if (email) setRegisteredEmail(email);
+          setUserAvatar(avatar);
+          setConfirmedRole(storedRole);
+          if (email) markProfileSessionCompleted(email);
+
+          const oauthInProgress = sessionStorage.getItem("afriguide_oauth_in_progress");
+          if (oauthInProgress) {
+            sessionStorage.removeItem("afriguide_oauth_in_progress");
+            sessionStorage.removeItem("afriguide_oauth_role");
+            setCurrentScreen(storedRole === "guide" ? 21 : 13);
+          }
+        }
+      });
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
+          const user = session.user;
+          const email = user.email || "";
+          const name =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            (email ? email.split("@")[0] : "AfriGuide Member");
+          const avatar =
+            user.user_metadata?.avatar_url ||
+            user.user_metadata?.picture ||
+            "/images/user_avatar.png";
+          const storedRole =
+            (sessionStorage.getItem("afriguide_oauth_role") as "tourist" | "guide") ||
+            (localStorage.getItem("afriguide_user_role") as "tourist" | "guide") ||
+            "tourist";
+
+          setUserFullName(name);
+          if (email) setRegisteredEmail(email);
+          setUserAvatar(avatar);
+          setConfirmedRole(storedRole);
+          if (email) markProfileSessionCompleted(email);
+
+          const oauthInProgress = sessionStorage.getItem("afriguide_oauth_in_progress");
+          if (oauthInProgress) {
+            sessionStorage.removeItem("afriguide_oauth_in_progress");
+            sessionStorage.removeItem("afriguide_oauth_role");
+            setCurrentScreen(storedRole === "guide" ? 21 : 13);
+          }
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (err) {
+      console.warn("OAuth session init notice:", err);
+    }
+  }, []);
+
+  const handleSocialLogin = async (provider: "google" | "facebook") => {
+    setAuthLoading(true);
+    setSignInError(null);
+    setSignUpError(null);
+    try {
+      const res = await signInWithProvider(provider, confirmedRole);
+      if (!res.success && res.error) {
+        console.warn(`OAuth sign in notice for ${provider}:`, res.error);
+        if (
+          res.error.toLowerCase().includes("not enabled") ||
+          res.error.toLowerCase().includes("unsupported")
+        ) {
+          alert(
+            `${
+              provider.charAt(0).toUpperCase() + provider.slice(1)
+            } sign in requires enabling ${provider} in your Supabase Dashboard -> Authentication -> Providers. You can also sign up with email and password!`
+          );
+        } else {
+          setSignInError(res.error);
+          setSignUpError(res.error);
+        }
+      }
+    } catch (err) {
+      console.error("Social login exception:", err);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -227,56 +338,73 @@ export function InteractiveApp() {
           <JoinCommunityScreen
             initialRole={confirmedRole}
             isLoading={authLoading}
-            onBack={() => setCurrentScreen(8)}
-            onSignIn={() => setCurrentScreen(10)}
+            errorMessage={signUpError}
+            onBack={() => {
+              setSignUpError(null);
+              setCurrentScreen(8);
+            }}
+            onSignIn={() => {
+              setSignUpError(null);
+              setCurrentScreen(10);
+            }}
+            onSocialLogin={handleSocialLogin}
             onCreateAccount={async (data) => {
+              setSignUpError(null);
               const selectedRole = data?.role || confirmedRole;
               setConfirmedRole(selectedRole);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("afriguide_user_role", selectedRole);
-                if (data?.email) {
-                  localStorage.setItem(`afriguide_user_role_${data.email.trim().toLowerCase()}`, selectedRole);
-                }
-                if (selectedRole === "guide") {
-                  setUserAvatar("/images/desire_avatar.jpg");
-                  localStorage.setItem("afriguide_user_avatar", "/images/desire_avatar.jpg");
-                }
-              }
-              if (data?.name) {
-                setUserFullName(data.name);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("afriguide_user_name", data.name);
-                }
-              }
-              if (data?.email) {
-                setRegisteredEmail(data.email);
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("afriguide_user_email", data.email);
-                }
-              }
-              const now = new Date().toISOString();
-              setAccountCreatedAt(now);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("afriguide_account_created", now);
-              }
+
               setAuthLoading(true);
               try {
                 const res = await signUpUser({
                   name: data.name,
                   email: data.email,
-                  password: data.password || "AfriGuide123!",
+                  password: data.password || "",
                   role: selectedRole,
                 });
-                if (!res.success && res.error) {
-                  console.info("Supabase note:", res.error);
+
+                if (!res.success) {
+                  // STOP: Do NOT proceed if email is duplicate or password is weak!
+                  setSignUpError(res.error || "Failed to create account.");
+                  setAuthLoading(false);
+                  return;
                 }
+
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("afriguide_user_role", selectedRole);
+                  if (data?.email) {
+                    localStorage.setItem(`afriguide_user_role_${data.email.trim().toLowerCase()}`, selectedRole);
+                  }
+                  if (selectedRole === "guide") {
+                    setUserAvatar("/images/desire_avatar.jpg");
+                    localStorage.setItem("afriguide_user_avatar", "/images/desire_avatar.jpg");
+                  }
+                }
+                if (data?.name) {
+                  setUserFullName(data.name);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("afriguide_user_name", data.name);
+                  }
+                }
+                if (data?.email) {
+                  setRegisteredEmail(data.email);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("afriguide_user_email", data.email);
+                  }
+                }
+                const now = new Date().toISOString();
+                setAccountCreatedAt(now);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("afriguide_account_created", now);
+                }
+
                 // Send the 4-digit verification code directly to their email via Resend / SMTP
                 await sendEmailOtp(data.email);
-              } catch (err) {
+                setCurrentScreen(12);
+              } catch (err: any) {
                 console.warn("Sign up caught:", err);
+                setSignUpError(err?.message || "An error occurred during account creation.");
               } finally {
                 setAuthLoading(false);
-                setCurrentScreen(12);
               }
             }}
           />
@@ -289,8 +417,10 @@ export function InteractiveApp() {
             initialEmail={registeredEmail}
             errorMessage={signInError}
             isLoading={authLoading}
+            onSocialLogin={handleSocialLogin}
             onSignUp={() => {
               setSignInError(null);
+              setSignUpError(null);
               setCurrentScreen(9);
             }}
             onBack={() => {

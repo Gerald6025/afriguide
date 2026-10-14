@@ -369,16 +369,42 @@ export async function updateProfileAvatar(
 
   try {
     const supabase = createClient();
-    // 1. Update Supabase Auth user metadata so session restore always has it
-    try {
-      await supabase.auth.updateUser({
-        data: { avatar_url: avatarUrl },
-      });
-    } catch (authErr) {
-      console.warn("Notice updating auth user metadata:", authErr);
+    // 1. Update Supabase Auth user metadata ONLY if it is an HTTP/HTTPS URL or static path.
+    // CRITICAL: NEVER store base64 data URLs in Supabase Auth user metadata!
+    // Base64 data URLs in auth metadata inflate the session JWT into a >30KB cookie,
+    // which causes browsers to hit HTTP ERROR 431 (Request Header Fields Too Large).
+    const isSafeUrl =
+      avatarUrl &&
+      !avatarUrl.startsWith("data:") &&
+      (avatarUrl.startsWith("http://") ||
+        avatarUrl.startsWith("https://") ||
+        avatarUrl.startsWith("/"));
+
+    if (isSafeUrl) {
+      try {
+        await supabase.auth.updateUser({
+          data: { avatar_url: avatarUrl },
+        });
+      } catch (authErr) {
+        console.warn("Notice updating auth user metadata:", authErr);
+      }
+    } else {
+      // If auth user metadata previously stored a bloated base64 avatar, reset it to shrink the cookie
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.user_metadata?.avatar_url?.startsWith?.("data:")) {
+          await supabase.auth.updateUser({
+            data: { avatar_url: "/images/user_avatar.png" },
+          });
+        }
+      } catch {
+        // ignore background cleanup errors
+      }
     }
 
-    // 2. Upsert into public.profiles table
+    // 2. Upsert into public.profiles table (safe because Postgres table columns do not end up in browser cookies)
     if (cleanEmail) {
       await (supabase.from("profiles") as any).upsert(
         {

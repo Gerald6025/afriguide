@@ -170,12 +170,20 @@ export function InteractiveApp() {
             ? localStorage.getItem("afriguide_user_avatar")
             : null;
 
+          // If Supabase Auth previously stored a large data URL in metadata, sanitize it to keep cookies tiny
+          if (user.user_metadata?.avatar_url?.startsWith?.("data:")) {
+            supabase.auth
+              .updateUser({ data: { avatar_url: "/images/user_avatar.png" } })
+              .catch(() => {});
+          }
+
           const avatar =
-            user.user_metadata?.avatar_url ||
-            user.user_metadata?.picture ||
-            emailSpecificAvatar ||
-            generalAvatar ||
-            "/images/user_avatar.png";
+            user.user_metadata?.avatar_url && !user.user_metadata?.avatar_url.startsWith("data:")
+              ? user.user_metadata.avatar_url
+              : user.user_metadata?.picture ||
+                emailSpecificAvatar ||
+                generalAvatar ||
+                "/images/user_avatar.png";
           const storedRole =
             (sessionStorage.getItem("afriguide_oauth_role") as "tourist" | "guide") ||
             (localStorage.getItem("afriguide_user_role") as "tourist" | "guide") ||

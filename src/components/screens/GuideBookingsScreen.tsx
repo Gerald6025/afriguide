@@ -284,17 +284,22 @@ export function GuideBookingsScreen({
 
       {/* Scrollable Content Container */}
       <div className="flex-1 overflow-y-auto px-5 pt-1 pb-32 space-y-4 scrollbar-none">
-        {/* Interactive Guide Bookings Calendar Bar with Yellow Booked Slots */}
+        {/* Interactive Guide Bookings Calendar Bar */}
         <div className="w-full bg-white rounded-[22px] p-3.5 border border-stone-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-2.5">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-[#1E3F32] stroke-[2.2]" />
               <span className="text-[13.5px] font-bold text-black">April Guide Schedule</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] px-2 py-0.5 rounded-full text-[11px] font-black">
-              <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse" />
-              <span>Yellow = Booked Slot</span>
-            </div>
+            {selectedCalendarDay !== null && (
+              <button
+                type="button"
+                onClick={() => setSelectedCalendarDay(null)}
+                className="text-xs text-[#1E3F32] font-bold hover:underline"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
 
           {/* Days Strip */}
@@ -317,17 +322,17 @@ export function GuideBookingsScreen({
                   type="button"
                   onClick={() => setSelectedCalendarDay(isSelected ? null : d.day)}
                   className={`flex flex-col items-center justify-center min-w-[42px] h-[54px] rounded-[16px] transition-all cursor-pointer ${
-                    hasBooking
-                      ? "bg-[#FEF08A] text-[#854D0E] border-2 border-[#FACC15] font-black shadow-xs ring-2 ring-[#FACC15]/40 scale-102"
-                      : isSelected
-                      ? "bg-[#1E3F32] text-white font-bold"
+                    isSelected
+                      ? "bg-[#1E3F32] text-white font-bold shadow-xs scale-102"
+                      : hasBooking
+                      ? "bg-[#E5ECE9] text-[#1E3F32] font-bold border border-[#1E3F32]/20"
                       : "bg-[#F5F5F5] text-stone-700 hover:bg-stone-200 font-medium"
                   }`}
                 >
                   <span className="text-[10px] uppercase font-bold tracking-tight opacity-75">{d.weekday}</span>
                   <span className="text-[15px] font-black">{d.day}</span>
                   {hasBooking && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308] mt-0.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1E3F32] mt-0.5" />
                   )}
                 </button>
               );
@@ -337,13 +342,6 @@ export function GuideBookingsScreen({
           {selectedCalendarDay !== null && (
             <div className="flex items-center justify-between pt-1 px-1 border-t border-stone-100 text-[12px]">
               <span className="text-stone-600 font-medium">Filtering April {selectedCalendarDay}</span>
-              <button
-                type="button"
-                onClick={() => setSelectedCalendarDay(null)}
-                className="text-[#1E3F32] font-bold hover:underline"
-              >
-                Clear filter
-              </button>
             </div>
           )}
         </div>
@@ -438,15 +436,15 @@ export function GuideBookingsScreen({
                   {item.tourTitle}
                 </h4>
 
-                {/* Date & Time Row with Yellow Booked Slot */}
+                {/* Date & Time Row */}
                 <div className="flex items-center gap-2 pt-1 flex-wrap">
-                  <div className="flex items-center gap-1.5 bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] px-3 py-1 rounded-full text-[12px] font-bold shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308] animate-pulse" />
-                    <span>Booked slot: {item.timeSlot}</span>
+                  <div className="flex items-center gap-1.5 bg-stone-100 text-stone-800 px-2.5 py-1 rounded-full text-[12px] font-semibold">
+                    <Clock className="w-3.5 h-3.5 text-stone-600 stroke-[2.2]" />
+                    <span>{item.timeSlot}</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 bg-amber-50 text-amber-900 border border-amber-200/80 px-2.5 py-1 rounded-full text-[12px] font-semibold">
-                    <CalendarIcon className="w-3.5 h-3.5 text-amber-700 stroke-[2.2]" />
+                  <div className="flex items-center gap-1.5 bg-stone-100 text-stone-800 px-2.5 py-1 rounded-full text-[12px] font-semibold">
+                    <CalendarIcon className="w-3.5 h-3.5 text-stone-600 stroke-[2.2]" />
                     <span>{item.date}</span>
                   </div>
                 </div>

@@ -628,11 +628,10 @@ export function GuideDashboardScreen({
             {/* Right Booking Details */}
             <div className="flex-1 p-3 flex flex-col justify-between">
               <div>
-                {/* Confirmed Booked Slot Pill */}
+                {/* Confirmed Pill */}
                 <div className="flex justify-end mb-1">
-                  <span className="bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] text-[10.5px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308]" />
-                    Booked Slot • Confirmed
+                  <span className="bg-[#E5ECE9] text-[#1E3F32] text-[10.5px] font-bold px-2 py-0.5 rounded-full">
+                    Confirmed
                   </span>
                 </div>
 
@@ -643,9 +642,8 @@ export function GuideDashboardScreen({
 
                 {/* Date & Time */}
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-600 mb-1">
-                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#854D0E]" />
-                  <span className="font-semibold text-stone-800">April 18, 2026- 09:00am</span>
-                  <span className="bg-[#FEF08A] text-[#854D0E] font-bold text-[9.5px] px-1.5 py-0.5 rounded border border-[#FACC15]">Booked slot</span>
+                  <Calendar className="w-3.5 h-3.5 shrink-0 text-stone-500" />
+                  <span>April 18, 2026- 09:00am</span>
                 </div>
 
                 {/* Group size */}
@@ -709,9 +707,8 @@ export function GuideDashboardScreen({
             <div className="flex-1 p-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-end mb-1">
-                  <span className="bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] text-[10.5px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308]" />
-                    Booked Slot • Confirmed
+                  <span className="bg-[#E5ECE9] text-[#1E3F32] text-[10.5px] font-bold px-2 py-0.5 rounded-full">
+                    Confirmed
                   </span>
                 </div>
 

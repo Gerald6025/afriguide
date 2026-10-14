@@ -547,6 +547,7 @@ export function TouristHomeScreen({
           }}
           avatarUrl={currentUserAvatar}
           guideName={currentUserName}
+          guideEmail={userEmail}
           initialChatWith={chatTargetGuide || undefined}
         />
 

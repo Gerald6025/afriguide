@@ -38,6 +38,8 @@ export interface GuideBookingItem {
 
 interface GuideBookingsScreenProps {
   onBack: () => void;
+  avatarUrl?: string;
+  guideName?: string;
   onOpenMessage?: (booking: GuideBookingItem) => void;
   onViewDetails?: (booking: GuideBookingItem) => void;
 }
@@ -111,11 +113,14 @@ const INITIAL_BOOKINGS: GuideBookingItem[] = [
 
 export function GuideBookingsScreen({
   onBack,
+  avatarUrl = "/images/desire_avatar.jpg",
+  guideName = "Desire",
   onOpenMessage,
   onViewDetails,
 }: GuideBookingsScreenProps) {
   const [bookings, setBookings] = useState<GuideBookingItem[]>(INITIAL_BOOKINGS);
   const [selectedFilter, setSelectedFilter] = useState<"all" | "requests" | "upcoming" | "confirmed">("all");
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<GuideBookingItem | null>(null);
   const [chatTarget, setChatTarget] = useState<GuideBookingItem | null>(null);
   const [chatMessage, setChatMessage] = useState<string>("");
@@ -164,8 +169,12 @@ export function GuideBookingsScreen({
   // Calculate pending requests count
   const pendingCount = bookings.filter((b) => b.status === "Pending").length;
 
-  // Filter bookings based on selected tab
+  // Filter bookings based on selected tab and selected calendar day
   const filteredBookings = bookings.filter((item) => {
+    if (selectedCalendarDay !== null) {
+      const matchDay = item.date.includes(String(selectedCalendarDay));
+      if (!matchDay) return false;
+    }
     if (selectedFilter === "requests") return item.status === "Pending";
     if (selectedFilter === "confirmed") return item.status === "Confirmed";
     if (selectedFilter === "upcoming") return true; // all future
@@ -275,6 +284,70 @@ export function GuideBookingsScreen({
 
       {/* Scrollable Content Container */}
       <div className="flex-1 overflow-y-auto px-5 pt-1 pb-32 space-y-4 scrollbar-none">
+        {/* Interactive Guide Bookings Calendar Bar with Yellow Booked Slots */}
+        <div className="w-full bg-white rounded-[22px] p-3.5 border border-stone-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col gap-2.5">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-[#1E3F32] stroke-[2.2]" />
+              <span className="text-[13.5px] font-bold text-black">April Guide Schedule</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] px-2 py-0.5 rounded-full text-[11px] font-black">
+              <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse" />
+              <span>Yellow = Booked Slot</span>
+            </div>
+          </div>
+
+          {/* Days Strip */}
+          <div className="flex items-center justify-between gap-1 overflow-x-auto pb-1 scrollbar-none">
+            {[
+              { day: 16, weekday: "Thu" },
+              { day: 17, weekday: "Fri" },
+              { day: 18, weekday: "Sat" },
+              { day: 19, weekday: "Sun" },
+              { day: 20, weekday: "Mon" },
+              { day: 21, weekday: "Tue" },
+              { day: 22, weekday: "Wed" },
+              { day: 23, weekday: "Thu" },
+            ].map((d) => {
+              const hasBooking = bookings.some((b) => b.date.includes(String(d.day)));
+              const isSelected = selectedCalendarDay === d.day;
+              return (
+                <button
+                  key={d.day}
+                  type="button"
+                  onClick={() => setSelectedCalendarDay(isSelected ? null : d.day)}
+                  className={`flex flex-col items-center justify-center min-w-[42px] h-[54px] rounded-[16px] transition-all cursor-pointer ${
+                    hasBooking
+                      ? "bg-[#FEF08A] text-[#854D0E] border-2 border-[#FACC15] font-black shadow-xs ring-2 ring-[#FACC15]/40 scale-102"
+                      : isSelected
+                      ? "bg-[#1E3F32] text-white font-bold"
+                      : "bg-[#F5F5F5] text-stone-700 hover:bg-stone-200 font-medium"
+                  }`}
+                >
+                  <span className="text-[10px] uppercase font-bold tracking-tight opacity-75">{d.weekday}</span>
+                  <span className="text-[15px] font-black">{d.day}</span>
+                  {hasBooking && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308] mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedCalendarDay !== null && (
+            <div className="flex items-center justify-between pt-1 px-1 border-t border-stone-100 text-[12px]">
+              <span className="text-stone-600 font-medium">Filtering April {selectedCalendarDay}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedCalendarDay(null)}
+                className="text-[#1E3F32] font-bold hover:underline"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* 12 Bookings Completed Banner Card */}
         <div className="w-full bg-white rounded-[22px] p-4 border border-stone-200/70 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex items-start justify-between gap-3">
           <div className="flex-1 pr-1">
@@ -365,16 +438,16 @@ export function GuideBookingsScreen({
                   {item.tourTitle}
                 </h4>
 
-                {/* Date & Time Row */}
-                <div className="flex items-center gap-3.5 pt-1 text-[12px] font-semibold text-stone-700">
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="w-3.5 h-3.5 text-stone-800 stroke-[2.2]" />
-                    <span>{item.date}</span>
+                {/* Date & Time Row with Yellow Booked Slot */}
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <div className="flex items-center gap-1.5 bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] px-3 py-1 rounded-full text-[12px] font-bold shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308] animate-pulse" />
+                    <span>Booked slot: {item.timeSlot}</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-stone-800 stroke-[2.2]" />
-                    <span>{item.timeSlot}</span>
+                  <div className="flex items-center gap-1.5 bg-amber-50 text-amber-900 border border-amber-200/80 px-2.5 py-1 rounded-full text-[12px] font-semibold">
+                    <CalendarIcon className="w-3.5 h-3.5 text-amber-700 stroke-[2.2]" />
+                    <span>{item.date}</span>
                   </div>
                 </div>
 

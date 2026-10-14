@@ -34,8 +34,9 @@ import {
   markProfileSessionCompleted,
   getUserRole,
 } from "@/services/authService";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { createBookingInDb, getProfileAvatar } from "@/services/dbService";
+import { createBookingInDb, getProfileAvatar, subscribeToRealtimeMessages } from "@/services/dbService";
 
 // Screen Flow:
 // Screen 1: Loading page (single compass icon)
@@ -106,6 +107,77 @@ export function InteractiveApp() {
   >(null);
   const [demoBookingDetails, setDemoBookingDetails] = useState<BookingDetails | null>(null);
   const [demoPaymentInfo, setDemoPaymentInfo] = useState<PaymentInfo | null>(null);
+  const [incomingNotification, setIncomingNotification] = useState<{
+    sender: string;
+    avatar?: string;
+    text: string;
+    time: string;
+  } | null>(null);
+
+  // Global Realtime notification listener for incoming messages
+  React.useEffect(() => {
+    const unsubscribe = subscribeToRealtimeMessages((newMsg) => {
+      const myName = (userFullName || "").trim().toLowerCase();
+      const myEmail = (registeredEmail || "").trim().toLowerCase();
+      const sName = (newMsg.sender_name || "").trim().toLowerCase();
+      const rName = (newMsg.receiver_name || "").trim().toLowerCase();
+
+      const isForMe = rName === myName || (myEmail && rName === myEmail);
+      const isMe = sName === myName || (myEmail && sName === myEmail);
+
+      // Only notify if message was sent TO me and NOT BY me
+      if (isForMe && !isMe) {
+        // Play soft chime audio
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.45);
+        } catch {
+          // ignore
+        }
+
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(`AfriGuide: Message from ${newMsg.sender_name}`, {
+              body: newMsg.content,
+              icon: newMsg.sender_avatar || "/images/user_avatar.png",
+            });
+          } catch {
+            // ignore
+          }
+        }
+
+        setIncomingNotification({
+          sender: newMsg.sender_name,
+          avatar: newMsg.sender_avatar || "/images/user_avatar.png",
+          text: newMsg.content,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [userFullName, registeredEmail]);
+
+  // Auto-dismiss notification after 6 seconds
+  React.useEffect(() => {
+    if (!incomingNotification) return;
+    const timer = setTimeout(() => {
+      setIncomingNotification(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [incomingNotification]);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -835,6 +907,56 @@ export function InteractiveApp() {
       {/* Edge-to-edge on mobile, max-w-[430px] centered on desktop */}
       <div className="w-full max-w-[430px] h-[100dvh] max-h-[100dvh] bg-white flex flex-col relative shadow-none overflow-hidden">
         {renderScreen()}
+
+        {/* Global Floating Message Notification Toast */}
+        {incomingNotification && (
+          <div
+            role="alert"
+            className="absolute top-4 left-4 right-4 z-[9999] bg-[#1E3F32] text-white p-3.5 rounded-2xl shadow-2xl border border-white/20 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300"
+          >
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-[#E57B24] flex items-center justify-center font-bold text-white shrink-0 shadow-sm text-sm">
+                {incomingNotification.sender ? incomingNotification.sender[0].toUpperCase() : "M"}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-amber-300 truncate">
+                    {incomingNotification.sender}
+                  </p>
+                  <span className="text-[10px] text-white/60">• now</span>
+                </div>
+                <p className="text-xs text-white/90 truncate max-w-[200px]">
+                  {incomingNotification.text}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIncomingNotification(null);
+                  const role = typeof window !== "undefined" ? localStorage.getItem("afriguide_user_role") : null;
+                  if (role === "guide") {
+                    setCurrentScreen(21);
+                  } else {
+                    setCurrentScreen(17);
+                  }
+                }}
+                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-[#1E3F32] font-semibold text-xs rounded-lg transition-all"
+              >
+                Reply
+              </button>
+              <button
+                type="button"
+                aria-label="Dismiss notification"
+                onClick={() => setIncomingNotification(null)}
+                className="w-6 h-6 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

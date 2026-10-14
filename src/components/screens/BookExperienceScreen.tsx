@@ -344,19 +344,23 @@ export function BookExperienceScreen({
 
               const isUnavailable = unavailableDays.includes(day);
               const isAvailableBadge = availableDays.includes(day);
+              const isBookedSlot = [4, 18, 21, 25].includes(day);
               const isSelected =
                 selectedDate.year === currentYear &&
                 selectedDate.month === currentMonthIndex &&
                 selectedDate.day === day;
               const isDayOne = day === 1;
 
-              // Style matching the exact Figma mockup
+              // Style matching the exact Figma mockup with yellow booked slot support
               let cellClasses =
                 "w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-all ";
 
               if (isSelected) {
                 cellClasses +=
                   "bg-[#1E3F32] text-white shadow-sm ring-2 ring-[#1E3F32] ring-offset-2 scale-105 cursor-pointer";
+              } else if (isBookedSlot) {
+                cellClasses +=
+                  "bg-[#FEF08A] text-[#854D0E] border-2 border-[#FACC15] ring-1 ring-[#FACC15]/40 font-black shadow-2xs cursor-pointer";
               } else if (isUnavailable) {
                 cellClasses +=
                   "bg-[#FFEBD6] text-[#D86F24] cursor-not-allowed opacity-90";
@@ -391,11 +395,17 @@ export function BookExperienceScreen({
           )}
 
           {/* Legend */}
-          <div className="flex items-center gap-6 mt-4 pt-2 border-t border-stone-100 px-1">
+          <div className="flex items-center gap-4 mt-4 pt-2 border-t border-stone-100 px-1 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#1E3F32]" />
               <span className="text-[12.5px] font-medium text-stone-700">
                 Available
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FACC15] ring-1 ring-[#CA8A04]" />
+              <span className="text-[12.5px] font-bold text-[#854D0E]">
+                Booked Slot (Yellow)
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -416,18 +426,27 @@ export function BookExperienceScreen({
           <div className="flex flex-wrap items-center gap-2.5">
             {timeSlots.map((time, idx) => {
               const isSelected = selectedTime === time;
+              const isSlotBooked = ["9:41 AM", "1:30 PM"].includes(time);
               return (
                 <button
                   key={`${time}-${idx}`}
                   type="button"
                   onClick={() => setSelectedTime(time)}
-                  className={`px-4 py-2.5 rounded-[20px] text-[14px] font-bold transition-all cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-[20px] text-[14px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSelected
                       ? "bg-black text-white shadow-xs scale-102"
+                      : isSlotBooked
+                      ? "bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] font-black shadow-2xs"
                       : "bg-[#EDEDED] text-stone-800 hover:bg-stone-200"
                   }`}
                 >
-                  {time}
+                  {isSlotBooked && <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308]" />}
+                  <span>{time}</span>
+                  {isSlotBooked && (
+                    <span className="text-[10px] uppercase font-black tracking-tight opacity-75">
+                      Booked
+                    </span>
+                  )}
                 </button>
               );
             })}

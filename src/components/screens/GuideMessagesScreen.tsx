@@ -74,6 +74,7 @@ interface GuideMessagesScreenProps {
   onBack: () => void;
   avatarUrl?: string;
   guideName?: string;
+  guideEmail?: string;
   initialChatWith?: string;
 }
 
@@ -81,6 +82,7 @@ export function GuideMessagesScreen({
   onBack,
   avatarUrl = "/images/desire_avatar.jpg",
   guideName = "Desire",
+  guideEmail,
   initialChatWith,
 }: GuideMessagesScreenProps) {
   const [chats, setChats] = useState<ChatThread[]>(DEFAULT_CHATS);
@@ -118,11 +120,26 @@ export function GuideMessagesScreen({
         > = {};
         const threadsMap: Record<string, ChatThread> = {};
 
+        const myName = (guideName || "").trim().toLowerCase();
+        const myEmail = (guideEmail || "").trim().toLowerCase();
+
         dbMsgs.forEach((m) => {
-          const isMe = m.sender_name.trim().toLowerCase() === guideName.trim().toLowerCase();
+          const sName = (m.sender_name || "").trim().toLowerCase();
+          const rName = (m.receiver_name || "").trim().toLowerCase();
+
+          const isMe = sName === myName || (myEmail && sName === myEmail);
+          const isForMe = rName === myName || (myEmail && rName === myEmail);
+
+          // STRICT 1-ON-1 PRIVACY:
+          // A message between 2 people MUST only be visible to those 2 people!
+          // If the current user is neither sender nor receiver, ignore completely.
+          if (!isMe && !isForMe) {
+            return;
+          }
+
           const counterpart = isMe ? m.receiver_name : m.sender_name;
           const counterpartAvatar = isMe ? "/images/user_avatar.png" : (m.sender_avatar || "/images/user_avatar.png");
-          const chatId = `chat_${counterpart.trim().toLowerCase().replace(/\s+/g, "_")}`;
+          const chatId = `chat_${counterpart.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
           const msgTime = new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
           if (!messagesByChat[chatId]) {
@@ -148,6 +165,7 @@ export function GuideMessagesScreen({
 
         const liveThreads = Object.values(threadsMap);
         setChats((prev) => {
+          if (liveThreads.length === 0) return prev;
           const merged = [
             ...liveThreads,
             ...prev.filter((c) => !liveThreads.some((lt) => lt.name.toLowerCase() === c.name.toLowerCase())),
@@ -168,10 +186,42 @@ export function GuideMessagesScreen({
 
     // Subscribe to Realtime messages from Supabase
     const unsubscribe = subscribeToRealtimeMessages((newDbMsg) => {
-      const isMe = newDbMsg.sender_name.trim().toLowerCase() === guideName.trim().toLowerCase();
+      const myName = (guideName || "").trim().toLowerCase();
+      const myEmail = (guideEmail || "").trim().toLowerCase();
+      const sName = (newDbMsg.sender_name || "").trim().toLowerCase();
+      const rName = (newDbMsg.receiver_name || "").trim().toLowerCase();
+
+      const isMe = sName === myName || (myEmail && sName === myEmail);
+      const isForMe = rName === myName || (myEmail && rName === myEmail);
+
+      // STRICT 1-ON-1 PRIVACY: Ignore messages between other users
+      if (!isMe && !isForMe) {
+        return;
+      }
+
+      // Play chime if incoming message for me
+      if (isForMe && !isMe) {
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.4);
+        } catch {
+          // ignore audio restriction
+        }
+      }
+
       const counterpart = isMe ? newDbMsg.receiver_name : newDbMsg.sender_name;
       const counterpartAvatar = isMe ? "/images/user_avatar.png" : (newDbMsg.sender_avatar || "/images/user_avatar.png");
-      const chatId = `chat_${counterpart.trim().toLowerCase().replace(/\s+/g, "_")}`;
+      const chatId = `chat_${counterpart.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
       const msgTime = new Date(newDbMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       const newMsgItem = {
@@ -224,7 +274,7 @@ export function GuideMessagesScreen({
       isMounted = false;
       unsubscribe();
     };
-  }, [guideName]);
+  }, [guideName, guideEmail]);
 
   // Open initialChatWith if requested
   useEffect(() => {

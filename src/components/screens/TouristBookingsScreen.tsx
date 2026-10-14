@@ -365,12 +365,12 @@ export function TouristBookingsScreen({
                       <MapPin className="w-3.5 h-3.5 stroke-[2] text-stone-700 shrink-0" />
                       <span className="truncate">{booking.location}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 stroke-[2] text-stone-700 shrink-0" />
-                      <span>{booking.time}</span>
+                    <div className="flex items-center gap-1.5 bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] px-2 py-0.5 rounded-full text-[11px] font-bold">
+                      <Clock className="w-3 h-3 stroke-[2.4] text-[#854D0E] shrink-0" />
+                      <span>Booked slot: {booking.time}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 stroke-[2] text-stone-700 shrink-0" />
+                    <div className="flex items-center gap-1.5 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold">
+                      <Calendar className="w-3 h-3 stroke-[2] text-amber-700 shrink-0" />
                       <span>{booking.date}</span>
                     </div>
                   </div>

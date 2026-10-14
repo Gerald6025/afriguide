@@ -112,6 +112,7 @@ export function GuideDashboardScreen({
   }, [avatarUrl]);
 
   const [activeTab, setActiveTab] = useState<"dashboard" | "calendar" | "tours" | "messages" | "profile">("dashboard");
+  const [chatTargetUser, setChatTargetUser] = useState<string | null>(null);
   const [showReviewRequests, setShowReviewRequests] = useState<boolean>(false);
   const [showAddNewTour, setShowAddNewTour] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
@@ -171,7 +172,7 @@ export function GuideDashboardScreen({
     return (
       <AddNewTourScreen
         guideName={guideName}
-        guideAvatar={avatarUrl}
+        guideAvatar={currentAvatar}
         onBack={() => setShowAddNewTour(false)}
         onPublish={() => {
           setShowAddNewTour(false);
@@ -186,7 +187,15 @@ export function GuideDashboardScreen({
   if (activeTab === "calendar") {
     return (
       <div className="w-full h-full flex flex-col bg-[#F9FAF9] text-black relative select-none overflow-hidden">
-        <GuideBookingsScreen onBack={() => setActiveTab("dashboard")} />
+        <GuideBookingsScreen
+          onBack={() => setActiveTab("dashboard")}
+          avatarUrl={currentAvatar}
+          guideName={guideName}
+          onOpenMessage={(b) => {
+            setChatTargetUser(b.travelerName);
+            setActiveTab("messages");
+          }}
+        />
 
         {/* Floating Bottom Navigation Bar */}
         <div className="absolute bottom-5 left-4 right-4 z-30 bg-white/95 backdrop-blur-md rounded-[32px] py-2 px-3 shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-stone-200/70 flex items-center justify-between">
@@ -247,7 +256,7 @@ export function GuideDashboardScreen({
       <div className="w-full h-full flex flex-col bg-[#F9FAF9] text-black relative select-none overflow-hidden">
         <GuideToursScreen
           onBack={() => setActiveTab("dashboard")}
-          avatarUrl={avatarUrl}
+          avatarUrl={currentAvatar}
           guideName={guideName}
           onAddNewTour={() => setShowAddNewTour(true)}
         />
@@ -310,9 +319,14 @@ export function GuideDashboardScreen({
     return (
       <div className="w-full h-full flex flex-col bg-[#F9FAF9] text-black relative select-none overflow-hidden">
         <GuideMessagesScreen
-          onBack={() => setActiveTab("dashboard")}
-          avatarUrl={avatarUrl}
+          onBack={() => {
+            setChatTargetUser(null);
+            setActiveTab("dashboard");
+          }}
+          avatarUrl={currentAvatar}
           guideName={guideName}
+          guideEmail={guideEmail}
+          initialChatWith={chatTargetUser || undefined}
         />
 
         {/* Floating Bottom Navigation Bar */}
@@ -614,10 +628,11 @@ export function GuideDashboardScreen({
             {/* Right Booking Details */}
             <div className="flex-1 p-3 flex flex-col justify-between">
               <div>
-                {/* Confirmed Pill */}
+                {/* Confirmed Booked Slot Pill */}
                 <div className="flex justify-end mb-1">
-                  <span className="bg-[#D3EFE1] text-[#1E3F32] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    Confirmed
+                  <span className="bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] text-[10.5px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308]" />
+                    Booked Slot • Confirmed
                   </span>
                 </div>
 
@@ -628,8 +643,9 @@ export function GuideDashboardScreen({
 
                 {/* Date & Time */}
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-600 mb-1">
-                  <Calendar className="w-3.5 h-3.5 shrink-0 text-stone-500" />
-                  <span>April 18, 2026- 09:00am</span>
+                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#854D0E]" />
+                  <span className="font-semibold text-stone-800">April 18, 2026- 09:00am</span>
+                  <span className="bg-[#FEF08A] text-[#854D0E] font-bold text-[9.5px] px-1.5 py-0.5 rounded border border-[#FACC15]">Booked slot</span>
                 </div>
 
                 {/* Group size */}
@@ -642,7 +658,7 @@ export function GuideDashboardScreen({
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-700 font-medium">
                   <div className="w-4 h-4 rounded-full overflow-hidden bg-stone-200 shrink-0">
                     <Image
-                      src={avatarUrl || "/images/desire_avatar.jpg"}
+                      src={currentAvatar || "/images/desire_avatar.jpg"}
                       alt="Guide"
                       width={16}
                       height={16}
@@ -693,8 +709,9 @@ export function GuideDashboardScreen({
             <div className="flex-1 p-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-end mb-1">
-                  <span className="bg-[#D3EFE1] text-[#1E3F32] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    Confirmed
+                  <span className="bg-[#FEF08A] text-[#854D0E] border border-[#FACC15] text-[10.5px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308]" />
+                    Booked Slot • Confirmed
                   </span>
                 </div>
 

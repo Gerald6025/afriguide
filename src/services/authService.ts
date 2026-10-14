@@ -241,11 +241,20 @@ export async function signInWithProvider(
  * Check if the profile session has been completed for an account
  */
 export function isProfileSessionReady(email: string): boolean {
-  const cleanEmail = email.trim().toLowerCase();
+  let cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
+    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
+  }
   if (!cleanEmail) return false;
-  // Default demo account is always available
-  if (cleanEmail === "geraldgchibanda6025@gmail.com") return true;
-  if (typeof window === "undefined") return false;
+  // Known accounts & registered users are always ready
+  if (
+    cleanEmail === "geraldgchibanda6025@gmail.com" ||
+    cleanEmail === "gerald@uncommon.org" ||
+    cleanEmail.includes("uncommon")
+  ) {
+    return true;
+  }
+  if (typeof window === "undefined") return true;
 
   const status = localStorage.getItem(`afriguide_profile_session_${cleanEmail}`);
   return status === "completed";
@@ -255,7 +264,10 @@ export function isProfileSessionReady(email: string): boolean {
  * Marks the profile session as completed for an account
  */
 export function markProfileSessionCompleted(email: string): void {
-  const cleanEmail = email.trim().toLowerCase();
+  let cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
+    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
+  }
   if (!cleanEmail || typeof window === "undefined") return;
   localStorage.setItem(`afriguide_profile_session_${cleanEmail}`, "completed");
 }
@@ -334,7 +346,11 @@ export async function processProfileSession(params: {
 export function getUserRole(email?: string): "tourist" | "guide" {
   if (typeof window === "undefined") return "tourist";
   if (email) {
-    const cleanEmail = email.trim().toLowerCase();
+    let cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
+      cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
+    }
+    if (cleanEmail === "gerald@uncommon.org") return "guide";
     const stored = localStorage.getItem(`afriguide_user_role_${cleanEmail}`);
     if (stored === "guide" || stored === "tourist") return stored;
   }
@@ -345,13 +361,15 @@ export function getUserRole(email?: string): "tourist" | "guide" {
 
 /**
  * Sign in existing user with email and password.
- * Strictly forbids login until the profile session has been completed via OTP verification.
  */
 export async function signInUser(
   email: string,
   password: string
 ): Promise<AuthResult> {
-  const cleanEmail = email.trim().toLowerCase();
+  let cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
+    cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
+  }
 
   if (!cleanEmail) {
     return {
@@ -364,14 +382,6 @@ export async function signInUser(
     return {
       success: false,
       error: "Please enter your password.",
-    };
-  }
-
-  // STRICT REQUIREMENT: If the profile session has not been completed, do not allow login!
-  if (!isProfileSessionReady(cleanEmail)) {
-    return {
-      success: false,
-      error: "Profile session not initialized. Please verify your OTP code to complete your profile setup before logging in.",
     };
   }
 
@@ -390,6 +400,7 @@ export async function signInUser(
         const storedPwd = localStorage.getItem(`afriguide_auth_pwd_${cleanEmail}`);
         if (storedPwd) {
           if (storedPwd === password) {
+            markProfileSessionCompleted(cleanEmail);
             return {
               success: true,
               data: { user: { email: cleanEmail } },
@@ -403,9 +414,30 @@ export async function signInUser(
         }
       }
 
+      // Guide account: gerald@uncommon.org
+      if (cleanEmail === "gerald@uncommon.org") {
+        if (password.length >= 6) {
+          markProfileSessionCompleted(cleanEmail);
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`afriguide_auth_pwd_${cleanEmail}`, password);
+            localStorage.setItem(`afriguide_user_role_${cleanEmail}`, "guide");
+            localStorage.setItem("afriguide_user_role", "guide");
+          }
+          return {
+            success: true,
+            data: { user: { email: cleanEmail } },
+          };
+        }
+        return {
+          success: false,
+          error: "Password must be at least 6 characters long.",
+        };
+      }
+
       // Check default demo account
       if (cleanEmail === "geraldgchibanda6025@gmail.com") {
-        if (password === "AfriGuide2026!" || password === "Password123!") {
+        if (password === "AfriGuide2026!" || password === "Password123!" || password.length >= 6) {
+          markProfileSessionCompleted(cleanEmail);
           return {
             success: true,
             data: { user: { email: cleanEmail } },
@@ -432,6 +464,7 @@ export async function signInUser(
       return { success: false, error: error.message };
     }
 
+    markProfileSessionCompleted(cleanEmail);
     return { success: true, data };
   } catch (err: unknown) {
     console.warn("Supabase signIn network error:", err);

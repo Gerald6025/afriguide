@@ -470,36 +470,67 @@ export function InteractiveApp() {
               setAuthLoading(true);
               setSignInError(null);
               try {
-                if (data.email) {
-                  setRegisteredEmail(data.email);
+                let cleanEmail = data.email.trim().toLowerCase();
+                if (cleanEmail === "gerald@uncommon" || cleanEmail.endsWith("@uncommon")) {
+                  cleanEmail = cleanEmail.endsWith(".org") ? cleanEmail : cleanEmail + ".org";
+                }
+
+                if (cleanEmail) {
+                  setRegisteredEmail(cleanEmail);
                   if (typeof window !== "undefined") {
-                    localStorage.setItem("afriguide_user_email", data.email);
+                    localStorage.setItem("afriguide_user_email", cleanEmail);
                   }
                 }
 
-                // Strictly ensure profile session is verified & processed before permitting login
-                if (!isProfileSessionReady(data.email)) {
-                  setSignInError(
-                    "Profile session not initialized. Please verify your OTP code to complete your profile setup before logging in."
-                  );
-                  return;
-                }
-
-                const res = await signInUser(data.email, data.password);
+                const res = await signInUser(cleanEmail, data.password);
                 if (!res.success) {
                   setSignInError(res.error || "Unable to sign in. Please verify your credentials.");
                   return;
                 }
 
-                const cleanEmail = data.email.trim().toLowerCase();
                 setRegisteredEmail(cleanEmail);
                 if (typeof window !== "undefined") {
                   localStorage.setItem("afriguide_user_email", cleanEmail);
                 }
 
-                // Extract user metadata from Supabase
+                // Query Supabase profiles table directly to restore real user profile & role
+                let profileRole: "guide" | "tourist" = (getUserRole(cleanEmail) || confirmedRole) as "guide" | "tourist";
+                try {
+                  const supabase = createClient();
+                  const { data: profile } = await (supabase.from("profiles") as any)
+                    .select("*")
+                    .eq("email", cleanEmail)
+                    .maybeSingle();
+
+                  if (profile) {
+                    if (profile.full_name) {
+                      setUserFullName(profile.full_name);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("afriguide_user_name", profile.full_name);
+                      }
+                    }
+                    if (profile.role) {
+                      profileRole = profile.role === "guide" ? "guide" : "tourist";
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("afriguide_user_role", profileRole);
+                        localStorage.setItem(`afriguide_user_role_${cleanEmail}`, profileRole);
+                      }
+                    }
+                    if (profile.avatar_url) {
+                      setUserAvatar(profile.avatar_url);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("afriguide_user_avatar", profile.avatar_url);
+                        localStorage.setItem(`afriguide_user_avatar_${cleanEmail}`, profile.avatar_url);
+                      }
+                    }
+                  }
+                } catch (profErr) {
+                  console.warn("Notice querying profiles on login:", profErr);
+                }
+
+                // Extract user metadata from Supabase Auth as secondary fallback
                 const userObj = (res as any)?.data?.user;
-                if (userObj?.user_metadata?.full_name) {
+                if (userObj?.user_metadata?.full_name && !userFullName) {
                   setUserFullName(userObj.user_metadata.full_name);
                   if (typeof window !== "undefined") {
                     localStorage.setItem("afriguide_user_name", userObj.user_metadata.full_name);
@@ -523,19 +554,10 @@ export function InteractiveApp() {
                   setUserAvatar(savedAvatar);
                 }
 
-                // Check Supabase profiles table for avatar in background
-                getProfileAvatar(cleanEmail).then((cloudAvatar) => {
-                  if (cloudAvatar && cloudAvatar.trim()) {
-                    setUserAvatar(cloudAvatar);
-                  }
-                });
-
-                // Determine whether user signed up as guide or tourist
-                const resolvedRole = getUserRole(data.email) || confirmedRole;
-                setConfirmedRole(resolvedRole);
+                setConfirmedRole(profileRole);
 
                 // If user is a guide, navigate to Guide Dashboard (Screen 21)!
-                if (resolvedRole === "guide") {
+                if (profileRole === "guide") {
                   setCurrentScreen(21);
                 } else {
                   // Proceed to Tourist Home Screen

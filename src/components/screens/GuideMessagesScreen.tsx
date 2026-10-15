@@ -280,15 +280,22 @@ export function GuideMessagesScreen({
   useEffect(() => {
     if (initialChatWith && initialChatWith.trim()) {
       const targetName = initialChatWith.trim();
-      const chatId = `chat_${targetName.toLowerCase().replace(/\s+/g, "_")}`;
-      const existing = chats.find((c) => c.name.toLowerCase() === targetName.toLowerCase());
+      const chatId = `chat_${targetName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      const existing = chats.find(
+        (c) =>
+          c.name.toLowerCase() === targetName.toLowerCase() ||
+          c.name.toLowerCase().includes(targetName.toLowerCase()) ||
+          targetName.toLowerCase().includes(c.name.toLowerCase())
+      );
       if (existing) {
         setActiveChat(existing);
       } else {
         const newThread: ChatThread = {
           id: chatId,
           name: targetName,
-          avatar: "/images/desire_avatar.jpg",
+          avatar: targetName.toLowerCase().includes("desire")
+            ? "/images/desire_avatar.jpg"
+            : "/images/user_avatar.png",
           lastMessage: "Hello! Looking forward to guiding your tour.",
           time: "Just now",
           unreadCount: 0,
@@ -324,10 +331,24 @@ export function GuideMessagesScreen({
       time: now,
     };
 
-    setChatMessages((prev) => ({
-      ...prev,
-      [activeChat.id]: [...(prev[activeChat.id] || []), newMsg],
-    }));
+    const initialFallback = activeChat.lastMessage
+      ? [
+          {
+            id: "init_1",
+            text: activeChat.lastMessage,
+            sender: "them" as const,
+            time: activeChat.time || "Just now",
+          },
+        ]
+      : [];
+
+    setChatMessages((prev) => {
+      const existingList = prev[activeChat.id] || initialFallback;
+      return {
+        ...prev,
+        [activeChat.id]: [...existingList, newMsg],
+      };
+    });
 
     // Update last message in thread
     setChats((prev) =>

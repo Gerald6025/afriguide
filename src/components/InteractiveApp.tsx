@@ -107,6 +107,10 @@ export function InteractiveApp() {
   >(null);
   const [demoBookingDetails, setDemoBookingDetails] = useState<BookingDetails | null>(null);
   const [demoPaymentInfo, setDemoPaymentInfo] = useState<PaymentInfo | null>(null);
+  const [touristInitialTab, setTouristInitialTab] = useState<
+    "explore" | "search" | "calendar" | "messages" | "profile"
+  >("explore");
+  const [touristChatGuide, setTouristChatGuide] = useState<string | null>(null);
   const [incomingNotification, setIncomingNotification] = useState<{
     sender: string;
     avatar?: string;
@@ -730,6 +734,12 @@ export function InteractiveApp() {
             avatarUrl={userAvatar}
             createdAt={accountCreatedAt}
             role={confirmedRole}
+            initialTab={touristInitialTab}
+            initialChatTargetGuide={touristChatGuide || undefined}
+            onResetInitialChat={() => {
+              setTouristChatGuide(null);
+              setTouristInitialTab("explore");
+            }}
             onUpdateName={(newName) => {
               setUserFullName(newName);
               if (typeof window !== "undefined") {
@@ -771,11 +781,18 @@ export function InteractiveApp() {
         // Screen 16: Booking Requested Screen
         return (
           <BookingRequestedScreen
+            tour={demoBookingDetails?.tour}
             bookingDetails={demoBookingDetails || undefined}
             paymentInfo={demoPaymentInfo || undefined}
             onClose={() => setCurrentScreen(13)}
             onBackToExplore={() => setCurrentScreen(13)}
             onViewBookings={() => setCurrentScreen(19)}
+            onMessageGuide={(guideName) => {
+              const target = guideName || demoBookingDetails?.tour?.guideName || "Desire Sibanda";
+              setTouristInitialTab("messages");
+              setTouristChatGuide(target);
+              setCurrentScreen(13);
+            }}
           />
         );
 
@@ -829,10 +846,19 @@ export function InteractiveApp() {
         // Screen 19: Booking Details Screen (confirmed status, tour summary, booking info, what's included, message guide/calendar)
         return (
           <BookingDetailsScreen
+            tour={demoBookingDetails?.tour}
             bookingDetails={demoBookingDetails || undefined}
             paymentInfo={demoPaymentInfo || undefined}
+            currentUserName={userFullName}
+            currentUserAvatar={userAvatar}
+            currentUserEmail={registeredEmail}
             onBack={() => setCurrentScreen(13)}
-            onMessageGuide={() => setCurrentScreen(13)}
+            onMessageGuide={(guideName) => {
+              const target = guideName || demoBookingDetails?.tour?.guideName || "Desire Sibanda";
+              setTouristInitialTab("messages");
+              setTouristChatGuide(target);
+              setCurrentScreen(13);
+            }}
           />
         );
 

@@ -136,6 +136,9 @@ interface TouristHomeScreenProps {
   avatarUrl?: string;
   createdAt?: string;
   role?: "tourist" | "guide";
+  initialTab?: "explore" | "search" | "calendar" | "messages" | "profile";
+  initialChatTargetGuide?: string;
+  onResetInitialChat?: () => void;
   onLogout?: () => void;
   onUpdateName?: (newName: string) => void;
   onUpdateAvatar?: (newAvatar: string) => void;
@@ -148,6 +151,9 @@ export function TouristHomeScreen({
   avatarUrl: propAvatarUrl,
   createdAt: propCreatedAt,
   role = "tourist",
+  initialTab,
+  initialChatTargetGuide,
+  onResetInitialChat,
   onLogout,
   onUpdateName,
   onUpdateAvatar,
@@ -248,7 +254,11 @@ export function TouristHomeScreen({
     }
     return "Gerald Chibanda";
   });
-  const [activeTab, setActiveTab] = useState<"explore" | "search" | "calendar" | "messages" | "profile">("explore");
+  const [activeTab, setActiveTab] = useState<"explore" | "search" | "calendar" | "messages" | "profile">(
+    initialTab || "explore"
+  );
+  const [chatTargetGuide, setChatTargetGuide] = useState<string | null>(initialChatTargetGuide || null);
+  const [previousTab, setPreviousTab] = useState<"explore" | "calendar">("explore");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
@@ -258,7 +268,19 @@ export function TouristHomeScreen({
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [bookingTour, setBookingTour] = useState<TourPreviewData | null>(null);
   const [viewingBookingDetails, setViewingBookingDetails] = useState<boolean>(false);
-  const [chatTargetGuide, setChatTargetGuide] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (initialChatTargetGuide) {
+      setChatTargetGuide(initialChatTargetGuide);
+      setActiveTab("messages");
+    }
+  }, [initialChatTargetGuide]);
 
   const [experiences, setExperiences] = useState<Experience[]>(EXPERIENCES);
 
@@ -334,6 +356,9 @@ export function TouristHomeScreen({
         tour={bookingTour || selectedTour || undefined}
         bookingDetails={paymentBookingDetails || undefined}
         paymentInfo={paymentInfo || undefined}
+        currentUserName={currentUserName}
+        currentUserAvatar={currentUserAvatar}
+        currentUserEmail={userEmail}
         onBack={() => {
           setViewingBookingDetails(false);
           setBookingTour(null);
@@ -341,15 +366,16 @@ export function TouristHomeScreen({
           setPaymentInfo(null);
           setBookingExperienceTour(null);
           setSelectedTour(null);
-          setActiveTab("explore");
+          setActiveTab(previousTab);
         }}
-        onMessageGuide={() => {
-          const guide = bookingTour?.guideName || selectedTour?.guideName || "Desire Sibanda";
+        onMessageGuide={(guideName) => {
+          const guide = guideName || bookingTour?.guideName || selectedTour?.guideName || "Desire Sibanda";
           setChatTargetGuide(guide);
           setViewingBookingDetails(false);
           setBookingTour(null);
           setPaymentBookingDetails(null);
           setPaymentInfo(null);
+          setPreviousTab("calendar");
           setActiveTab("messages");
         }}
       />
@@ -378,6 +404,17 @@ export function TouristHomeScreen({
         }}
         onViewBookings={() => {
           setViewingBookingDetails(true);
+        }}
+        onMessageGuide={(guideName) => {
+          const guide = guideName || bookingTour?.guideName || "Desire Sibanda";
+          setChatTargetGuide(guide);
+          setBookingTour(null);
+          setPaymentBookingDetails(null);
+          setPaymentInfo(null);
+          setBookingExperienceTour(null);
+          setSelectedTour(null);
+          setPreviousTab("calendar");
+          setActiveTab("messages");
         }}
       />
     );
@@ -464,10 +501,13 @@ export function TouristHomeScreen({
         <TouristBookingsScreen
           onBack={() => setActiveTab("explore")}
           onMessageGuide={(guideName) => {
+            setPreviousTab("calendar");
             setChatTargetGuide(guideName || "Desire Sibanda");
             setActiveTab("messages");
           }}
           onViewDetails={(booking) => {
+            setPreviousTab("calendar");
+            setViewingBookingDetails(true);
             setSelectedTour({
               id: booking.id,
               title: booking.title,
@@ -475,7 +515,23 @@ export function TouristHomeScreen({
               rating: 4.9,
               pricePerPerson: booking.price,
               imageUrl: booking.imageUrl,
+              guideName: booking.guideName,
               groupSize: "2-10 people",
+            });
+            setPaymentBookingDetails({
+              tour: {
+                id: booking.id,
+                title: booking.title,
+                location: booking.location,
+                rating: 4.9,
+                pricePerPerson: booking.price,
+                imageUrl: booking.imageUrl,
+                guideName: booking.guideName,
+              },
+              date: booking.date,
+              time: booking.time,
+              peopleCount: 2,
+              totalPrice: booking.price,
             });
           }}
         />
@@ -512,7 +568,10 @@ export function TouristHomeScreen({
 
           <button
             type="button"
-            onClick={() => setActiveTab("messages")}
+            onClick={() => {
+              setPreviousTab("calendar");
+              setActiveTab("messages");
+            }}
             aria-label="Messages"
             className="w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer text-stone-500 hover:text-black"
           >
@@ -543,7 +602,8 @@ export function TouristHomeScreen({
         <GuideMessagesScreen
           onBack={() => {
             setChatTargetGuide(null);
-            setActiveTab("explore");
+            onResetInitialChat?.();
+            setActiveTab(previousTab || "explore");
           }}
           avatarUrl={currentUserAvatar}
           guideName={currentUserName}

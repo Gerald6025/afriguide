@@ -26,7 +26,7 @@ export function SplashScreen1({ onNext }: SplashScreen1Props) {
       <div className="flex-1 flex items-center justify-center">
         <div className="relative w-[84px] h-[84px] flex items-center justify-center">
           <Image
-            src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373"
+            src="/images/afriguide-logo.png"
             alt="AfriGuide Logo"
             width={84}
             height={84}

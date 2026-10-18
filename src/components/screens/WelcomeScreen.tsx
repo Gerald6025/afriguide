@@ -16,7 +16,7 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
       <div className="flex justify-center pt-1 pb-1 shrink-0">
         <div className="relative w-[48px] h-[48px] sm:w-[52px] sm:h-[52px] flex items-center justify-center">
           <Image
-            src="https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373"
+            src="/images/afriguide-logo.png"
             alt="AfriGuide Logo"
             width={52}
             height={52}

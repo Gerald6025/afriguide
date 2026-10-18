@@ -466,7 +466,7 @@ export function GuideDashboardScreen({
               alt="AfriGuide Logo"
               className="w-9 h-9 object-contain"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://ik.imagekit.io/c0x52ylk1/afriguide%20resources/Logo%20(1).png?updatedAt=1779444032373";
+                (e.target as HTMLImageElement).src = "/images/afriguide-logo.png";
               }}
             />
           </div>

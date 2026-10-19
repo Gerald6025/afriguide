@@ -215,7 +215,6 @@ export function BookingRequestedScreen({
             View my bookings
           </button>
 
-
           <button
             type="button"
             onClick={onBackToExplore}

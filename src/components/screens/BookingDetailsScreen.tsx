@@ -256,6 +256,10 @@ export function BookingDetailsScreen({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleMessage = () => {
+    setIsChatOpen(true);
+  };
+
   return (
     <div className="relative w-full h-full min-h-full bg-[#FDFDFD] flex flex-col justify-between overflow-x-hidden overflow-y-auto select-none">
       {/* ── Top iOS Status Bar (Null-safe) ── */}
@@ -504,16 +508,25 @@ export function BookingDetailsScreen({
 
       {/* ── Fixed Bottom Actions Bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-100 flex justify-center">
-        <div className="w-full max-w-[430px] px-5 py-3.5 flex items-center">
+        <div className="w-full max-w-[430px] px-5 py-3.5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleMessage}
+            className="flex-1 h-[52px] rounded-[28px] border-[1.5px] border-[#1E3F32] bg-white hover:bg-stone-50 active:scale-95 text-[#1E3F32] font-bold text-[15px] tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 stroke-[2.2]" />
+            <span>Message Guide</span>
+          </button>
+
           <button
             type="button"
             onClick={handleAddToCalendar}
-            className="w-full h-[52px] rounded-[28px] bg-[#1E3F32] hover:bg-[#163026] active:scale-95 text-white font-bold text-[15px] tracking-tight transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+            className="flex-1 h-[52px] rounded-[28px] bg-[#1E3F32] hover:bg-[#163026] active:scale-95 text-white font-bold text-[15px] tracking-tight transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
           >
             {calendarAdded ? (
               <>
                 <CalendarCheck className="w-4 h-4 stroke-[2.4]" />
-                <span>Added to calendar</span>
+                <span>Added</span>
               </>
             ) : (
               <span>Add to calendar</span>

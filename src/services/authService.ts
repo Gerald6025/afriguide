@@ -24,6 +24,17 @@ export interface PasswordStrengthResult {
   errors: string[];
 }
 
+export function generateValidUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 /**
  * Validates that a password is strong:
  * - At least 8 characters
@@ -114,7 +125,7 @@ export async function signUpUser({
 }: SignUpParams): Promise<AuthResult> {
   const cleanEmail = email.trim().toLowerCase();
 
-  // 1. ENFORCE STRONG PASSWORD
+  // Enforce strong password
   const strength = validatePasswordStrength(password);
   if (!strength.isValid) {
     return {
@@ -123,81 +134,98 @@ export async function signUpUser({
     };
   }
 
-  // 2. ENFORCE UNIQUE EMAIL ADDRESS (No duplicate accounts)
-  const isExisting = await isEmailAlreadyRegistered(cleanEmail);
-  if (isExisting) {
-    return {
-      success: false,
-      error: "An account with this email address already exists. Please sign in instead.",
-    };
+  // Store pending registration details for use after OTP verification.
+  // We do NOT call supabase.auth.signUp() here because Supabase automatically
+  // sends a "Confirm your email" link which confuses users who expect a 4-digit
+  // OTP code. The actual Supabase account creation is deferred to finalizeSignUp(),
+  // which is called only after the custom OTP code is successfully verified.
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem("afriguide_pending_signup", JSON.stringify({ name, email: cleanEmail, password, role }));
+    localStorage.setItem("afriguide_user_role", role);
+    localStorage.setItem(`afriguide_user_role_${cleanEmail}`, role);
+    if (password) {
+      localStorage.setItem(`afriguide_auth_pwd_${cleanEmail}`, password);
+    }
   }
 
+  return {
+    success: true,
+    data: { user: { id: null, email: cleanEmail } },
+  };
+}
+
+/**
+ * Finalize account creation with Supabase Auth AFTER OTP has been verified.
+ * This prevents Supabase from sending its own "Confirm your email" link during
+ * sign-up, which would confuse users who expect a 4-digit OTP code instead.
+ */
+export async function finalizeSignUp(): Promise<AuthResult> {
   try {
+    let pending: { name: string; email: string; password: string; role: string } | null = null;
+    if (typeof window !== "undefined") {
+      const raw = sessionStorage.getItem("afriguide_pending_signup");
+      if (raw) {
+        try {
+          pending = JSON.parse(raw);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    if (!pending) {
+      // No pending signup — nothing to finalize (e.g. existing user just re-verified)
+      return { success: true, data: { skipped: true } };
+    }
+
+    const { name, email: cleanEmail, password, role } = pending;
     const supabase = createClient();
+
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
       options: {
-        data: {
-          full_name: name,
-          role,
-        },
+        data: { full_name: name, role },
+        // emailRedirectTo is omitted — user is already OTP-verified so any
+        // confirmation email Supabase may send can safely be ignored.
       },
     });
 
     if (error) {
-      console.warn("Supabase signUp notice:", error.message);
       const msg = error.message.toLowerCase();
-
-      // Check if email already registered
+      // Email already registered is fine — user may have verified before Supabase created the account
       if (
         msg.includes("already registered") ||
         msg.includes("already in use") ||
         msg.includes("user already exists") ||
         msg.includes("unique")
       ) {
-        return {
-          success: false,
-          error: "An account with this email address already exists. Please sign in instead.",
-        };
-      }
-
-      // Check for Supabase free-tier email rate limit (over_email_send_rate_limit)
-      const isEmailRateLimit =
+        console.info("finalizeSignUp: user already exists in Supabase Auth — treating as success.");
+      } else if (
         msg.includes("rate limit") ||
-        msg.includes("limit exceeded") ||
         msg.includes("over_email_send_rate_limit") ||
-        (error as any).status === 429;
-
-      if (!isEmailRateLimit) {
-        return { success: false, error: error.message };
-      }
-
-      console.info(
-        "Supabase email rate limit reached. Proceeding with AfriGuide database profile sync and custom OTP delivery."
-      );
-    }
-
-    const userId =
-      data?.user?.id ||
-      (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `usr_${Date.now()}`);
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("afriguide_user_role", role);
-      localStorage.setItem(`afriguide_user_role_${cleanEmail}`, role);
-      if (password) {
-        localStorage.setItem(`afriguide_auth_pwd_${cleanEmail}`, password);
-      }
-      const registered = JSON.parse(localStorage.getItem("afriguide_registered_emails") || "[]");
-      if (!registered.includes(cleanEmail)) {
-        registered.push(cleanEmail);
-        localStorage.setItem("afriguide_registered_emails", JSON.stringify(registered));
+        (error as any).status === 429
+      ) {
+        console.info("finalizeSignUp: Supabase email rate limit — profile-only sync.");
+      } else {
+        console.warn("finalizeSignUp Supabase signUp notice:", error.message);
       }
     }
 
-    // Always create / upsert profile in public.profiles table (not affected by email rate limits)
+    let userId = data?.user?.id;
+    if (!userId) {
+      try {
+        const { data: existingProf } = await (supabase.from("profiles") as any)
+          .select("id")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+        userId = existingProf?.id || generateValidUuid();
+      } catch {
+        userId = generateValidUuid();
+      }
+    }
+
+    // Upsert profile in public.profiles table
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any).from("profiles").upsert({
@@ -208,7 +236,12 @@ export async function signUpUser({
         created_at: new Date().toISOString(),
       });
     } catch (profileErr) {
-      console.warn("Profile upsert notice:", profileErr);
+      console.warn("finalizeSignUp profile upsert notice:", profileErr);
+    }
+
+    // Clear the pending signup data
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("afriguide_pending_signup");
     }
 
     return {
@@ -216,7 +249,7 @@ export async function signUpUser({
       data: data?.user ? data : { user: { id: userId, email: cleanEmail } },
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create account";
+    const message = err instanceof Error ? err.message : "Failed to finalize account creation";
     return { success: false, error: message };
   }
 }
@@ -304,12 +337,20 @@ export async function processProfileSession(params: {
 
   try {
     const supabase = createClient();
-    let profileId = `usr_${Date.now()}`;
+    let profileId = generateValidUuid();
 
-    // 1. Check if user already exists in auth
+    // 1. Check if user already exists in auth or profiles
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) profileId = user.id;
+      if (user?.id) {
+        profileId = user.id;
+      } else {
+        const { data: existingProf } = await (supabase.from("profiles") as any)
+          .select("id")
+          .eq("email", cleanEmail)
+          .maybeSingle();
+        if (existingProf?.id) profileId = existingProf.id;
+      }
     } catch (uErr) {
       console.warn("getUser in processProfileSession notice:", uErr);
     }

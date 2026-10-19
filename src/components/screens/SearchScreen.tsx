@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { IosHomeIndicator } from "../IosStatusBar";
+import { getToursFromDb } from "@/services/dbService";
 
 interface SearchScreenProps {
   onBack: () => void;
@@ -20,7 +21,7 @@ interface SearchScreenProps {
   onSelectTour?: (tour: SuggestedItem) => void;
 }
 
-interface SuggestedItem {
+export interface SuggestedItem {
   id: string;
   title: string;
   pricePerPerson: number;
@@ -42,10 +43,10 @@ const CATEGORY_ROWS = [
   ],
 ];
 
-const SUGGESTED_ITEMS: SuggestedItem[] = [
+const INITIAL_SUGGESTIONS: SuggestedItem[] = [
   {
     id: "sug-1",
-    title: "Game drive",
+    title: "Victoria Falls Safari Tour",
     pricePerPerson: 90,
     location: "Victoria Falls, Zimbabwe",
     imageUrl: "/images/experience_male_lion.jpg",
@@ -53,27 +54,43 @@ const SUGGESTED_ITEMS: SuggestedItem[] = [
   },
   {
     id: "sug-2",
-    title: "Game drive",
-    pricePerPerson: 90,
-    location: "Victoria Falls, Zimbabwe",
-    imageUrl: "/images/experience_lion.jpg",
+    title: "Hwange Elephant Walk",
+    pricePerPerson: 95,
+    location: "Hwange National Park",
+    imageUrl: "/images/experience_elephant.jpg",
     category: "wildlife",
   },
   {
     id: "sug-3",
-    title: "Game drive",
-    pricePerPerson: 90,
-    location: "Victoria Falls, Zimbabwe",
-    imageUrl: "/images/experience_male_lion.jpg",
-    category: "safari",
+    title: "Matobo Hills Rhino Expedition",
+    pricePerPerson: 110,
+    location: "Matobo Hills, Zimbabwe",
+    imageUrl: "/images/experience_walking_guide.jpg",
+    category: "historical",
   },
   {
     id: "sug-4",
-    title: "Game drive",
-    pricePerPerson: 90,
+    title: "Zambezi Sunset Boat Cruise",
+    pricePerPerson: 75,
+    location: "Zambezi River, Zimbabwe",
+    imageUrl: "/images/zambezi_river_sunset.jpg",
+    category: "adventure",
+  },
+  {
+    id: "sug-5",
+    title: "Great Zimbabwe Heritage Tour",
+    pricePerPerson: 85,
+    location: "Masvingo, Zimbabwe",
+    imageUrl: "/images/camel_desert_sunset.jpg",
+    category: "culture",
+  },
+  {
+    id: "sug-6",
+    title: "Boma African Dinner & Drums",
+    pricePerPerson: 65,
     location: "Victoria Falls, Zimbabwe",
-    imageUrl: "/images/experience_lion.jpg",
-    category: "wildlife",
+    imageUrl: "/images/hero_giraffe.jpg",
+    category: "food",
   },
 ];
 
@@ -83,8 +100,50 @@ export function SearchScreen({
   onSelectTour,
 }: SearchScreenProps) {
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
-  const [selectedCategory, setSelectedCategory] = useState<string>("safari");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [items, setItems] = useState<SuggestedItem[]>(INITIAL_SUGGESTIONS);
+
+  useEffect(() => {
+    async function loadLiveTours() {
+      try {
+        const dbTours = await getToursFromDb();
+        if (dbTours && dbTours.length > 0) {
+          const liveItems: SuggestedItem[] = dbTours.map((t) => {
+            const cat = (t.category || "").toLowerCase();
+            let mapped = "safari";
+            if (cat.includes("wildlife")) mapped = "wildlife";
+            else if (cat.includes("cultur")) mapped = "culture";
+            else if (cat.includes("histor")) mapped = "historical";
+            else if (cat.includes("advent") || cat.includes("walk")) mapped = "adventure";
+            else if (cat.includes("food") || cat.includes("drink")) mapped = "food";
+
+            return {
+              id: t.id,
+              title: t.title,
+              pricePerPerson: Number(t.price_per_person) || 85,
+              location: t.location || "Victoria Falls, Zimbabwe",
+              imageUrl: t.image_url || "/images/safari_guide_elephants.jpg",
+              category: mapped,
+            };
+          });
+
+          setItems((prev) => {
+            const combined = [...liveItems];
+            prev.forEach((p) => {
+              if (!combined.some((c) => c.title.toLowerCase() === p.title.toLowerCase())) {
+                combined.push(p);
+              }
+            });
+            return combined;
+          });
+        }
+      } catch (err) {
+        console.warn("Could not load db tours in search:", err);
+      }
+    }
+    loadLiveTours();
+  }, []);
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -95,7 +154,21 @@ export function SearchScreen({
     setSelectedCategory((prev) => (prev === catId ? "" : catId));
   };
 
-  const filteredItems = SUGGESTED_ITEMS.filter((item) => {
+  const filteredItems = items.filter((item) => {
+    // 1. Filter by category if selected
+    if (selectedCategory && selectedCategory !== "all") {
+      const itemCat = item.category.toLowerCase();
+      const selCat = selectedCategory.toLowerCase();
+      const matchesCategory =
+        itemCat === selCat ||
+        itemCat.includes(selCat) ||
+        (selCat === "safari" && (itemCat.includes("safari") || itemCat.includes("wildlife"))) ||
+        (selCat === "wildlife" && (itemCat.includes("wildlife") || itemCat.includes("safari"))) ||
+        (selCat === "culture" && (itemCat.includes("culture") || itemCat.includes("histor")));
+      if (!matchesCategory) return false;
+    }
+
+    // 2. Filter by search query
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -227,56 +300,75 @@ export function SearchScreen({
           </div>
 
           {/* 2-Column Grid matching mockup */}
-          <div className="grid grid-cols-2 gap-3.5">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => onSelectTour && onSelectTour(item)}
-                className="flex flex-col group cursor-pointer active:scale-[0.99] transition-transform"
+          {filteredItems.length === 0 ? (
+            <div className="py-12 px-4 text-center bg-stone-50 rounded-2xl border border-stone-100 flex flex-col items-center justify-center">
+              <p className="text-[14px] font-bold text-black mb-1">No experiences found</p>
+              <p className="text-[12px] text-stone-500 max-w-[260px] leading-relaxed mb-3">
+                Try clearing your search query or selecting a different category pill.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("");
+                  setSearchQuery("");
+                }}
+                className="px-4 py-2 bg-[#1E3F32] text-white text-xs font-bold rounded-full cursor-pointer hover:bg-[#163325] transition-colors"
               >
-                {/* Image Container with Heart Button */}
-                <div className="relative w-full aspect-[4/3] rounded-[18px] overflow-hidden bg-stone-100 shadow-2xs">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.title}
-                    fill
-                    sizes="200px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-
-                  {/* Heart Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => toggleFavorite(item.id, e)}
-                    aria-label="Add to favorites"
-                    className="absolute top-2.5 right-2.5 p-1 text-white hover:scale-110 transition-transform cursor-pointer drop-shadow-sm"
-                  >
-                    <Heart
-                      className={`w-5 h-5 stroke-[2] transition-colors ${
-                        favorites[item.id]
-                          ? "fill-[#E8622A] text-[#E8622A] stroke-[#E8622A]"
-                          : "fill-none text-white stroke-white"
-                      }`}
+                Clear all filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3.5">
+              {filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => onSelectTour && onSelectTour(item)}
+                  className="flex flex-col group cursor-pointer active:scale-[0.99] transition-transform"
+                >
+                  {/* Image Container with Heart Button */}
+                  <div className="relative w-full aspect-[4/3] rounded-[18px] overflow-hidden bg-stone-100 shadow-2xs">
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.title}
+                      fill
+                      sizes="200px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                  </button>
-                </div>
 
-                {/* Card Info */}
-                <div className="pt-2 px-0.5 flex flex-col gap-0.5">
-                  <span className="text-[14.5px] font-bold text-black leading-snug">
-                    {item.title}
-                  </span>
-                  <span className="text-[13px] font-medium text-stone-900">
-                    ${item.pricePerPerson}/person
-                  </span>
-                  <div className="flex items-center gap-1 text-black text-[11.5px] mt-0.5 font-normal">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 text-black stroke-[2]" />
-                    <span className="truncate">{item.location}</span>
+                    {/* Heart Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => toggleFavorite(item.id, e)}
+                      aria-label="Add to favorites"
+                      className="absolute top-2.5 right-2.5 p-1 text-white hover:scale-110 transition-transform cursor-pointer drop-shadow-sm"
+                    >
+                      <Heart
+                        className={`w-5 h-5 stroke-[2] transition-colors ${
+                          favorites[item.id]
+                            ? "fill-[#E8622A] text-[#E8622A] stroke-[#E8622A]"
+                            : "fill-none text-white stroke-white"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Card Info */}
+                  <div className="pt-2 px-0.5 flex flex-col gap-0.5">
+                    <span className="text-[14.5px] font-bold text-black leading-snug">
+                      {item.title}
+                    </span>
+                    <span className="text-[13px] font-medium text-stone-900">
+                      ${item.pricePerPerson}/person
+                    </span>
+                    <div className="flex items-center gap-1 text-black text-[11.5px] mt-0.5 font-normal">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 text-black stroke-[2]" />
+                      <span className="truncate">{item.location}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

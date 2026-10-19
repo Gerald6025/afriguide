@@ -70,6 +70,27 @@ const DEFAULT_CHATS: ChatThread[] = [
   },
 ];
 
+function normalizeChatId(name: string): string {
+  return `chat_${name.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+}
+
+function deduplicateThreads(threads: ChatThread[]): ChatThread[] {
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const result: ChatThread[] = [];
+
+  for (const t of threads) {
+    const idKey = t.id.toLowerCase();
+    const nameKey = t.name.trim().toLowerCase();
+    if (!seenIds.has(idKey) && !seenNames.has(nameKey)) {
+      seenIds.add(idKey);
+      seenNames.add(nameKey);
+      result.push(t);
+    }
+  }
+  return result;
+}
+
 interface GuideMessagesScreenProps {
   onBack: () => void;
   avatarUrl?: string;
@@ -132,14 +153,13 @@ export function GuideMessagesScreen({
 
           // STRICT 1-ON-1 PRIVACY:
           // A message between 2 people MUST only be visible to those 2 people!
-          // If the current user is neither sender nor receiver, ignore completely.
           if (!isMe && !isForMe) {
             return;
           }
 
           const counterpart = isMe ? m.receiver_name : m.sender_name;
           const counterpartAvatar = isMe ? "/images/user_avatar.png" : (m.sender_avatar || "/images/user_avatar.png");
-          const chatId = `chat_${counterpart.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+          const chatId = normalizeChatId(counterpart);
           const msgTime = new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
           if (!messagesByChat[chatId]) {
@@ -158,25 +178,39 @@ export function GuideMessagesScreen({
             avatar: counterpartAvatar,
             lastMessage: m.content,
             time: msgTime,
-            unreadCount: isMe ? 0 : 0,
+            unreadCount: 0,
             online: true,
           };
         });
 
         const liveThreads = Object.values(threadsMap);
         setChats((prev) => {
-          if (liveThreads.length === 0) return prev;
-          const merged = [
-            ...liveThreads,
-            ...prev.filter((c) => !liveThreads.some((lt) => lt.name.toLowerCase() === c.name.toLowerCase())),
-          ];
-          return merged;
+          if (liveThreads.length === 0) return deduplicateThreads(prev);
+          return deduplicateThreads([...liveThreads, ...prev]);
         });
 
-        setChatMessages((prev) => ({
-          ...prev,
-          ...messagesByChat,
-        }));
+        // Merge DB messages into existing chatMessages without wiping out local or seeded greeting messages
+        setChatMessages((prev) => {
+          const next = { ...prev };
+          Object.keys(messagesByChat).forEach((threadId) => {
+            const currentList = next[threadId] || [];
+            const incomingList = messagesByChat[threadId] || [];
+
+            const merged = [...currentList];
+            incomingList.forEach((inMsg) => {
+              const alreadyExists = merged.some(
+                (m) =>
+                  m.id === inMsg.id ||
+                  (m.sender === inMsg.sender && m.text === inMsg.text)
+              );
+              if (!alreadyExists) {
+                merged.push(inMsg);
+              }
+            });
+            next[threadId] = merged;
+          });
+          return next;
+        });
       } catch (err) {
         console.warn("Failed to load live messages:", err);
       }
@@ -221,7 +255,7 @@ export function GuideMessagesScreen({
 
       const counterpart = isMe ? newDbMsg.receiver_name : newDbMsg.sender_name;
       const counterpartAvatar = isMe ? "/images/user_avatar.png" : (newDbMsg.sender_avatar || "/images/user_avatar.png");
-      const chatId = `chat_${counterpart.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      const chatId = normalizeChatId(counterpart);
       const msgTime = new Date(newDbMsg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       const newMsgItem = {
@@ -233,7 +267,21 @@ export function GuideMessagesScreen({
 
       setChatMessages((prev) => {
         const existing = prev[chatId] || [];
-        if (existing.some((m) => m.id === newDbMsg.id)) return prev;
+        const alreadyExists = existing.some(
+          (m) =>
+            m.id === newDbMsg.id ||
+            (m.sender === (isMe ? "me" : "them") && m.text === newDbMsg.content)
+        );
+        if (alreadyExists) {
+          return {
+            ...prev,
+            [chatId]: existing.map((m) =>
+              m.text === newDbMsg.content && m.sender === (isMe ? "me" : "them")
+                ? { ...m, id: newDbMsg.id }
+                : m
+            ),
+          };
+        }
         return {
           ...prev,
           [chatId]: [...existing, newMsgItem],
@@ -241,10 +289,10 @@ export function GuideMessagesScreen({
       });
 
       setChats((prev) => {
-        const exists = prev.some((c) => c.id === chatId);
+        const exists = prev.some((c) => c.id === chatId || c.name.trim().toLowerCase() === counterpart.toLowerCase());
         if (exists) {
           return prev.map((c) =>
-            c.id === chatId
+            c.id === chatId || c.name.trim().toLowerCase() === counterpart.toLowerCase()
               ? {
                   ...c,
                   lastMessage: newDbMsg.content,
@@ -254,18 +302,16 @@ export function GuideMessagesScreen({
               : c
           );
         } else {
-          return [
-            {
-              id: chatId,
-              name: counterpart,
-              avatar: counterpartAvatar,
-              lastMessage: newDbMsg.content,
-              time: msgTime,
-              unreadCount: isMe ? 0 : 1,
-              online: true,
-            },
-            ...prev,
-          ];
+          const newThreadItem: ChatThread = {
+            id: chatId,
+            name: counterpart,
+            avatar: counterpartAvatar,
+            lastMessage: newDbMsg.content,
+            time: msgTime,
+            unreadCount: isMe ? 0 : 1,
+            online: true,
+          };
+          return deduplicateThreads([newThreadItem, ...prev]);
         }
       });
     });
@@ -276,20 +322,39 @@ export function GuideMessagesScreen({
     };
   }, [guideName, guideEmail]);
 
-  // Open initialChatWith if requested
+  // Open initialChatWith if requested and ensure NO duplicate threads or lost messages
   useEffect(() => {
     if (initialChatWith && initialChatWith.trim()) {
       const targetName = initialChatWith.trim();
-      const chatId = `chat_${targetName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
-      const existing = chats.find(
-        (c) =>
-          c.name.toLowerCase() === targetName.toLowerCase() ||
-          c.name.toLowerCase().includes(targetName.toLowerCase()) ||
-          targetName.toLowerCase().includes(c.name.toLowerCase())
-      );
-      if (existing) {
-        setActiveChat(existing);
-      } else {
+      const chatId = normalizeChatId(targetName);
+
+      // Seed the welcome message so it is guaranteed to persist and not disappear
+      setChatMessages((prev) => {
+        if (prev[chatId] && prev[chatId].length > 0) return prev;
+        return {
+          ...prev,
+          [chatId]: [
+            {
+              id: `welcome_${chatId}`,
+              text: "Hello! Looking forward to guiding your tour. Feel free to ask any questions!",
+              sender: "them",
+              time: "Just now",
+            },
+          ],
+        };
+      });
+
+      setChats((prev) => {
+        const existing = prev.find(
+          (c) =>
+            c.id === chatId ||
+            c.name.trim().toLowerCase() === targetName.toLowerCase()
+        );
+        if (existing) {
+          setActiveChat(existing);
+          return deduplicateThreads(prev);
+        }
+
         const newThread: ChatThread = {
           id: chatId,
           name: targetName,
@@ -301,17 +366,35 @@ export function GuideMessagesScreen({
           unreadCount: 0,
           online: true,
         };
-        setChats((prev) => [newThread, ...prev]);
         setActiveChat(newThread);
-      }
+        return deduplicateThreads([newThread, ...prev]);
+      });
     }
   }, [initialChatWith]);
 
-  const filteredChats = chats.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredChats = deduplicateThreads(
+    chats.filter((c) =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   const handleOpenChat = (chat: ChatThread) => {
+    // Ensure thread has welcome message seeded if empty
+    setChatMessages((prev) => {
+      if (prev[chat.id] && prev[chat.id].length > 0) return prev;
+      return {
+        ...prev,
+        [chat.id]: [
+          {
+            id: `welcome_${chat.id}`,
+            text: chat.lastMessage,
+            sender: "them",
+            time: chat.time || "Just now",
+          },
+        ],
+      };
+    });
+
     // Mark as read
     setChats((prev) =>
       prev.map((c) => (c.id === chat.id ? { ...c, unreadCount: 0 } : c))
@@ -334,7 +417,7 @@ export function GuideMessagesScreen({
     const initialFallback = activeChat.lastMessage
       ? [
           {
-            id: "init_1",
+            id: `welcome_${activeChat.id}`,
             text: activeChat.lastMessage,
             sender: "them" as const,
             time: activeChat.time || "Just now",
@@ -344,13 +427,15 @@ export function GuideMessagesScreen({
 
     setChatMessages((prev) => {
       const existingList = prev[activeChat.id] || initialFallback;
+      if (existingList.some((m) => m.id === tempId)) return prev;
       return {
         ...prev,
         [activeChat.id]: [...existingList, newMsg],
       };
     });
 
-    // Update last message in thread
+    // Update activeChat and last message in thread
+    setActiveChat((curr) => (curr ? { ...curr, lastMessage: content, time: now } : null));
     setChats((prev) =>
       prev.map((c) =>
         c.id === activeChat.id ? { ...c, lastMessage: content, time: now } : c

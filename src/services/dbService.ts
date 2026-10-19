@@ -85,6 +85,45 @@ export async function createTourInDb(tour: Omit<DbTour, "id" | "created_at">): P
   }
 }
 
+export async function updateTourInDb(
+  tourId: string,
+  updates: Partial<Omit<DbTour, "id" | "created_at">>
+): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { error } = await (supabase.from("tours") as any)
+      .update(updates)
+      .eq("id", tourId);
+
+    if (error) {
+      console.error("Failed to update tour in Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("updateTourInDb error:", err);
+    return false;
+  }
+}
+
+export async function deleteTourFromDb(tourId: string): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { error } = await (supabase.from("tours") as any)
+      .delete()
+      .eq("id", tourId);
+
+    if (error) {
+      console.error("Failed to delete tour from Supabase:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("deleteTourFromDb error:", err);
+    return false;
+  }
+}
+
 /**
  * ── BOOKINGS SERVICE ──
  */

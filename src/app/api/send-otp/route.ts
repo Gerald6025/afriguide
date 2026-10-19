@@ -53,10 +53,10 @@ export async function POST(request: Request) {
     const resendApiKey = process.env.RESEND_API_KEY?.trim();
     const smtpHost = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
     const smtpPort = parseInt(process.env.SMTP_PORT || "465", 10);
-    const smtpUser = process.env.SMTP_USER?.trim() || "geraldgchibanda6025@gmail.com";
-    const rawPass = process.env.SMTP_PASS?.trim() || "gbzqhjytovkoqkdw";
+    const smtpUser = process.env.SMTP_USER?.trim() || "";
+    const rawPass = process.env.SMTP_PASS?.trim() || "";
     const smtpPass = rawPass ? rawPass.replace(/\s+/g, "") : null;
-    const emailFrom = process.env.EMAIL_FROM || `Gerald Chibanda <${smtpUser}>`;
+    const emailFrom = process.env.EMAIL_FROM || (smtpUser ? `AfriGuide <${smtpUser}>` : "AfriGuide <no-reply@afriguide.com>");
 
     let emailDelivered = false;
     let deliveryError: string | null = null;

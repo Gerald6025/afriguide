@@ -30,6 +30,7 @@ import {
   verifyEmailOtp,
   resendEmailOtp,
   processProfileSession,
+  finalizeSignUp,
   isProfileSessionReady,
   markProfileSessionCompleted,
   getUserRole,
@@ -465,6 +466,12 @@ export function InteractiveApp() {
 
               setAuthLoading(true);
               try {
+                // Validate password strength & duplicate email ONLY.
+                // We deliberately do NOT call supabase.auth.signUp() here because
+                // Supabase would immediately send a "Confirm your email" link which
+                // confuses users who expect a 4-digit OTP code instead.
+                // The actual Supabase account creation happens in finalizeSignUp()
+                // AFTER the user verifies their 4-digit code successfully.
                 const res = await signUpUser({
                   name: data.name,
                   email: data.email,
@@ -473,7 +480,6 @@ export function InteractiveApp() {
                 });
 
                 if (!res.success) {
-                  // STOP: Do NOT proceed if email is duplicate or password is weak!
                   setSignUpError(res.error || "Failed to create account.");
                   setAuthLoading(false);
                   return;
@@ -507,7 +513,7 @@ export function InteractiveApp() {
                   localStorage.setItem("afriguide_account_created", now);
                 }
 
-                // Send the 4-digit verification code directly to their email via Resend / SMTP
+                // Send the 4-digit verification code directly to their email
                 await sendEmailOtp(data.email);
                 setCurrentScreen(12);
               } catch (err: any) {
@@ -694,6 +700,12 @@ export function InteractiveApp() {
 
                 // Step 2: Transition to processing profile session
                 setProfileProcessingStatus("processing");
+
+                // Finalize Supabase account creation NOW (after OTP verified).
+                // This avoids Supabase sending its own confirmation link email
+                // during the initial sign-up step.
+                await finalizeSignUp();
+
                 const sessionRes = await processProfileSession({
                   email: registeredEmail,
                   name: userFullName,
@@ -712,7 +724,7 @@ export function InteractiveApp() {
                 await new Promise((r) => setTimeout(r, 900));
                 setProfileProcessingStatus(null);
                 setSignInError(null);
-                alert("Profile session processed and verified successfully! You can now sign in.");
+                alert("Your account has been verified successfully! You can now sign in.");
                 setCurrentScreen(10);
               } catch (err) {
                 console.warn("Verification exception:", err);

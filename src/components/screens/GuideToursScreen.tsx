@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { getToursFromDb } from "@/services/dbService";
+import {
+  getToursFromDb,
+  createTourInDb,
+  updateTourInDb,
+  deleteTourFromDb,
+} from "@/services/dbService";
 import {
   ArrowLeft,
   Award,
@@ -33,33 +38,33 @@ interface GuideToursScreenProps {
 const DEFAULT_TOURS: TourItem[] = [
   {
     id: "tour_1",
-    title: "Tour of the Victoria Falls",
-    pricePerPerson: 230,
+    title: "Victoria Falls Rainforest & Gorge Walk",
+    pricePerPerson: 120,
     duration: "4 hours",
     status: "Active",
     image: "/images/zambezi_river_sunset.jpg",
   },
   {
     id: "tour_2",
-    title: "Tour of the Victoria Falls",
-    pricePerPerson: 230,
-    duration: "4 hours",
+    title: "Sunset Safari & Big 5 Tracking",
+    pricePerPerson: 180,
+    duration: "5 hours",
     status: "Active",
     image: "/images/safari_guide_elephants.jpg",
   },
   {
     id: "tour_3",
-    title: "Tour of the Victoria Falls",
-    pricePerPerson: 230,
-    duration: "4 hours",
+    title: "Livingstone Island & Devil's Pool",
+    pricePerPerson: 210,
+    duration: "3 hours",
     status: "Active",
     image: "/images/hero_giraffe.jpg",
   },
   {
     id: "tour_4",
-    title: "Tour of the Victoria Falls",
-    pricePerPerson: 230,
-    duration: "4 hours",
+    title: "Hwange Full-Day Elephant Expedition",
+    pricePerPerson: 240,
+    duration: "8 hours",
     status: "Active",
     image: "/images/experience_elephant.jpg",
   },
@@ -73,9 +78,9 @@ const DEFAULT_TOURS: TourItem[] = [
   },
   {
     id: "tour_6",
-    title: "Hwange Big 5 Game Drive",
-    pricePerPerson: 250,
-    duration: "8 hours",
+    title: "Zambezi Canoe & Wildlife Safari",
+    pricePerPerson: 150,
+    duration: "4 hours",
     status: "Draft",
     image: "/images/zebras_safari.jpg",
   },
@@ -125,34 +130,69 @@ export function GuideToursScreen({
     return true;
   });
 
-  const handleDeleteTour = (id: string) => {
+  const handleDeleteTour = async (id: string) => {
     if (confirm("Are you sure you want to delete this tour listing?")) {
       setTours((prev) => prev.filter((t) => t.id !== id));
+      if (!id.startsWith("tour_")) {
+        await deleteTourFromDb(id);
+      }
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingTour) return;
+    const updated = editingTour;
     setTours((prev) =>
-      prev.map((t) => (t.id === editingTour.id ? editingTour : t))
+      prev.map((t) => (t.id === updated.id ? updated : t))
     );
     setEditingTour(null);
+    if (!updated.id.startsWith("tour_")) {
+      await updateTourInDb(updated.id, {
+        title: updated.title,
+        price_per_person: updated.pricePerPerson,
+        duration: updated.duration,
+        status: updated.status === "Active" ? "active" : "draft",
+      });
+    }
   };
 
-  const handleCreateTour = () => {
+  const handleCreateTour = async () => {
     if (!newTitle.trim()) {
       alert("Please enter a tour title");
       return;
     }
-    const newTour: TourItem = {
-      id: `tour_${Date.now()}`,
-      title: newTitle.trim(),
-      pricePerPerson: parseInt(newPrice, 10) || 150,
-      duration: newDuration.trim() || "4 hours",
-      status: "Active",
-      image: "/images/experience_safari_jeep.jpg",
-    };
-    setTours((prev) => [newTour, ...prev]);
+    const title = newTitle.trim();
+    const price = parseInt(newPrice, 10) || 150;
+    const duration = newDuration.trim() || "4 hours";
+
+    try {
+      const dbTour = await createTourInDb({
+        title,
+        price_per_person: price,
+        duration,
+        category: "Safari & Wildlife",
+        description: "Curated guided tour with experienced local guides.",
+        max_group_size: 8,
+        location: "Victoria Falls, Zimbabwe",
+        image_url: "/images/safari_guide_elephants.jpg",
+        guide_name: guideName || "Desire Sibanda",
+        guide_avatar: avatarUrl || "/images/desire_avatar.jpg",
+        status: "active",
+      });
+
+      const newTour: TourItem = {
+        id: dbTour?.id || `tour_${Date.now()}`,
+        title,
+        pricePerPerson: price,
+        duration,
+        status: "Active",
+        image: "/images/safari_guide_elephants.jpg",
+      };
+      setTours((prev) => [newTour, ...prev]);
+    } catch (err) {
+      console.error("Error creating tour:", err);
+    }
+
     setShowNewTourModal(false);
     setNewTitle("");
   };

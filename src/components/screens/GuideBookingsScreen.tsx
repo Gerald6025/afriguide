@@ -44,6 +44,23 @@ interface GuideBookingsScreenProps {
   onViewDetails?: (booking: GuideBookingItem) => void;
 }
 
+function checkDateMatchesDay(dateString: string, targetDay: number): boolean {
+  if (!dateString) return false;
+  const regex = new RegExp(`(^|[^0-9])0?${targetDay}([^0-9]|$)`);
+  if (regex.test(dateString)) {
+    return true;
+  }
+  try {
+    const parsed = new Date(dateString);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.getDate() === targetDay;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 const INITIAL_BOOKINGS: GuideBookingItem[] = [
   {
     id: "booking_1",
@@ -172,7 +189,7 @@ export function GuideBookingsScreen({
   // Filter bookings based on selected tab and selected calendar day
   const filteredBookings = bookings.filter((item) => {
     if (selectedCalendarDay !== null) {
-      const matchDay = item.date.includes(String(selectedCalendarDay));
+      const matchDay = checkDateMatchesDay(item.date, selectedCalendarDay);
       if (!matchDay) return false;
     }
     if (selectedFilter === "requests") return item.status === "Pending";
@@ -314,7 +331,7 @@ export function GuideBookingsScreen({
               { day: 22, weekday: "Wed" },
               { day: 23, weekday: "Thu" },
             ].map((d) => {
-              const hasBooking = bookings.some((b) => b.date.includes(String(d.day)));
+              const hasBooking = bookings.some((b) => checkDateMatchesDay(b.date, d.day));
               const isSelected = selectedCalendarDay === d.day;
               return (
                 <button

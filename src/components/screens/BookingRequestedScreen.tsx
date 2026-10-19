@@ -10,7 +10,6 @@ import {
   Calendar,
   Clock,
   Users,
-  MessageSquare,
 } from "lucide-react";
 import { TourPreviewData } from "./TourPreviewScreen";
 import { BookingDetails } from "./BookExperienceScreen";
@@ -216,20 +215,6 @@ export function BookingRequestedScreen({
             View my bookings
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (onMessageGuide) {
-                onMessageGuide(guideName);
-              } else if (onViewBookings) {
-                onViewBookings();
-              }
-            }}
-            className="w-full h-[52px] rounded-[28px] border-[1.5px] border-[#1E3F32] bg-white hover:bg-stone-50 active:scale-[0.98] text-[#1E3F32] font-bold text-[15px] tracking-tight transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 stroke-[2.2]" />
-            Message Guide ({guideName})
-          </button>
 
           <button
             type="button"

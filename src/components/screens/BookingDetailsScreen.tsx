@@ -122,21 +122,29 @@ export function BookingDetailsScreen({
         });
 
         if (relevant.length > 0) {
-          setChatMessages(
-            relevant.map((m) => {
+          setChatMessages((prev) => {
+            const welcomeMsgs = prev.filter((m) => m.id.startsWith("welcome_"));
+            const dbMsgsFormatted = relevant.map((m) => {
               const sName = (m.sender_name || "").trim().toLowerCase();
               const isMe = sName === myName || (myEmail && sName === myEmail);
               return {
                 id: m.id,
                 text: m.content,
-                sender: isMe ? "me" : "them",
+                sender: (isMe ? "me" : "them") as "me" | "them",
                 time: new Date(m.created_at).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                 }),
               };
-            })
-          );
+            });
+            const all = [...welcomeMsgs, ...dbMsgsFormatted];
+            const seen = new Set<string>();
+            return all.filter((m) => {
+              if (seen.has(m.id)) return false;
+              seen.add(m.id);
+              return true;
+            });
+          });
         }
       } catch (err) {
         console.warn("Could not load booking chat history:", err);
@@ -158,18 +166,29 @@ export function BookingDetailsScreen({
 
       if (isForMe) {
         playChime();
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            id: newMsg.id,
-            text: newMsg.content,
-            sender: "them",
-            time: new Date(newMsg.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ]);
+        setChatMessages((prev) => {
+          if (
+            prev.some(
+              (m) =>
+                m.id === newMsg.id ||
+                (m.sender === "them" && m.text === newMsg.content)
+            )
+          ) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              id: newMsg.id,
+              text: newMsg.content,
+              sender: "them",
+              time: new Date(newMsg.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            },
+          ];
+        });
       }
     });
 

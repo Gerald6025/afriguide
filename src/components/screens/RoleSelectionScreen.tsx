@@ -46,9 +46,6 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
 
   const handleSelectRoleCard = (role: "tourist" | "guide") => {
     setSelectedRole(role);
-  };
-
-  const handleContinue = () => {
     setShowConfirmModal(true);
   };
 
@@ -58,7 +55,7 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
   };
 
   return (
-    <div className="relative w-full h-[100dvh] max-h-[100dvh] bg-white flex flex-col justify-between overflow-hidden px-4 sm:px-5 pt-1 pb-1 select-none">
+    <div className="relative w-full h-[100dvh] max-h-[100dvh] bg-white flex flex-col justify-between overflow-hidden px-4 sm:px-5 pt-1 pb-4 select-none">
       {/* Top Header Bar with Back Arrow & Centered Logo Pill */}
       <div className="relative flex items-center justify-between pt-1 pb-1 w-full shrink-0">
         <button
@@ -90,7 +87,7 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
         {/* Card 1: I'm a Tourist */}
         <div
           onClick={() => handleSelectRoleCard("tourist")}
-          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all ${
+          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all active:scale-[0.99] ${
             selectedRole === "tourist"
               ? "border-2 border-dashed border-[#E8622A] bg-white shadow-xs"
               : "border border-stone-200/90 bg-[#F9FAFB] hover:border-stone-300"
@@ -142,7 +139,7 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
         {/* Card 2: I'm a Guide */}
         <div
           onClick={() => handleSelectRoleCard("guide")}
-          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all ${
+          className={`relative rounded-[20px] sm:rounded-[24px] p-3 sm:p-4 cursor-pointer transition-all active:scale-[0.99] ${
             selectedRole === "guide"
               ? "border-2 border-dashed border-[#E8622A] bg-white shadow-xs"
               : "border border-stone-200/90 bg-[#F9FAFB] hover:border-stone-300"
@@ -192,19 +189,10 @@ export function RoleSelectionScreen({ onBack, onSelectRole }: RoleSelectionScree
         </div>
       </div>
 
-      {/* Bottom Continue Button */}
-      <div className="w-full pt-2 pb-1 mt-auto shrink-0">
-        <button
-          type="button"
-          onClick={handleContinue}
-          className="w-full py-3.5 sm:py-4 rounded-[18px] sm:rounded-[20px] bg-[#F0F4F2] hover:bg-[#E5ECE7] active:scale-[0.98] text-[#1E3F32] font-bold text-[15.5px] sm:text-[16.5px] tracking-normal transition-all cursor-pointer flex items-center justify-center shadow-2xs"
-        >
-          Select your role to continue
-        </button>
-      </div>
-
       {/* iOS Home Indicator Bar */}
-      <IosHomeIndicator theme="dark" />
+      <div className="pt-2">
+        <IosHomeIndicator theme="dark" />
+      </div>
 
       {/* Confirmation Modal Popup for Tourist */}
       {showConfirmModal && (

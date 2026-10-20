@@ -760,22 +760,6 @@ export function TouristHomeScreen({
 
       {/* ── Scrollable Body Content ── */}
       <div className="flex-1 w-full flex flex-col px-5 pt-3 gap-5">
-        {/* Guide Mode Active Quick Switch Banner */}
-        {role === "guide" && onNavigateGuideDashboard && (
-          <div
-            onClick={onNavigateGuideDashboard}
-            className="w-full bg-[#1E3F32] hover:bg-[#163325] text-white rounded-[20px] px-4 py-3 flex items-center justify-between shadow-xs cursor-pointer transition-all active:scale-[0.98]"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[13px] font-bold">Guide Dashboard</span>
-            </div>
-            <span className="text-[12px] font-semibold text-emerald-200 underline underline-offset-2">
-              Switch to Guide View &rarr;
-            </span>
-          </div>
-        )}
-
         {/* 1. Search Bar */}
         <div
           onClick={() => setActiveTab("search")}
